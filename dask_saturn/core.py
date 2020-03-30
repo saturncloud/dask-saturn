@@ -10,27 +10,27 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 
 
+def _start():
+    """Start a cluster that has already been defined for the project"""
+    url = urljoin(BASE_URL, "api/dask_clusters")
+
+    response = requests.post(url, headers=HEADERS)
+    if not response.ok:
+        raise ValueError(response.reason)
+    name = response.json()["name"]
+    return f"{url}/{name}/"
+
+
 class SaturnCluster(SpecCluster):
     def __init__(self, cluster_url=None):
         if cluster_url is None:
-            self.start()
+            cluster_url = _start()
         self.cluster_url = cluster_url
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
-
-    @classmethod
-    def start(cls):
-        """Start a cluster that has already been defined for the project"""
-        url = urljoin(BASE_URL, "api/dask_clusters")
-
-        response = requests.post(url, headers=HEADERS)
-        if not response.ok:
-            raise ValueError(response.reason)
-        name = response.json()["name"]
-        return cls(f"{url}/{name}/")
 
     @property
     def status(self):

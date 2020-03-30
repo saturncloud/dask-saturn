@@ -17,8 +17,8 @@ def _start():
     response = requests.post(url, headers=HEADERS)
     if not response.ok:
         raise ValueError(response.reason)
-    name = response.json()["name"]
-    return f"{url}/{name}/"
+    id = response.json()["id"]
+    return f"{url}/{id}/"
 
 
 class SaturnCluster(SpecCluster):

@@ -10,17 +10,10 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 
 
-def start():
-    clusters_url = urljoin(BASE_URL, "api/dask_clusters/")
-    response = requests.post(clusters_url, headers=HEADERS)
-    name = response.json()["name"]
-    return urljoin(cluster_url, name)
-
-
 class SaturnCluster(SpecCluster):
     def __init__(self, cluster_url=None):
         if cluster_url is None:
-            cluster_url = start()
+            self.start()
         self.cluster_url = cluster_url
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
@@ -28,10 +21,24 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks = {}
 
+    @classmethod
+    def start(cls):
+        """Start a cluster that has already been defined for the project"""
+        url = urljoin(BASE_URL, "api/dask_clusters")
+
+        response = requests.post(url, headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        name = response.json()["name"]
+        return cls(f"{url}/{name}/")
+
     @property
     def status(self):
         url = urljoin(self.cluster_url, "status")
-        return requests.get(url, headers=HEADERS).content.decode()
+        response = requests.get(url, headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        return response.json()["status"]
 
     @property
     def _supports_scaling(self):
@@ -48,20 +55,35 @@ class SaturnCluster(SpecCluster):
     @property
     def scheduler_info(self):
         url = urljoin(self.cluster_url, "scheduler_info")
-        return requests.get(url, headers=HEADERS).json()
+        response = requests.get(url, headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        return response.json()
 
     def _get_info(self):
         url = urljoin(self.cluster_url, "info")
-        return requests.get(url, headers=HEADERS).json()
+        response = requests.get(url, headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        return response.json()
 
     def scale(self, n):
+        """Scale cluster to have ``n`` workers"""
         url = urljoin(self.cluster_url, "scale")
-        requests.post(url, json.dumps({"n": n}), headers=HEADERS)
+        response = requests.post(url, json.dumps({"n": n}), headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
 
     def adapt(self, minimum, maximum):
+        """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
         url = urljoin(self.cluster_url, "adapt")
-        requests.post(url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=HEADERS)
+        response = requests.post(url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
 
     def close(self):
-        response = requests.patch(self.cluster_url, json.dumps({"operation": "stop"}), headers=HEADERS)
+        url = urljoin(self.cluster_url, "close")
+        response = requests.post(url, headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
         return response.json()

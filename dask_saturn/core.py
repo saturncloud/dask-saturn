@@ -25,8 +25,8 @@ class SaturnCluster(SpecCluster):
     def __init__(self, cluster_url=None):
         if cluster_url is None:
             cluster_url = _start()
-        if not cluster_url.endswith('/'):
-            cluster_url = cluster_url + '/'
+        if not cluster_url.endswith("/"):
+            cluster_url = cluster_url + "/"
         self.cluster_url = cluster_url
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
@@ -79,7 +79,9 @@ class SaturnCluster(SpecCluster):
     def adapt(self, minimum, maximum):
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
         url = urljoin(self.cluster_url, "adapt")
-        response = requests.post(url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=HEADERS)
+        response = requests.post(
+            url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=HEADERS
+        )
         if not response.ok:
             raise ValueError(response.reason)
 

@@ -26,9 +26,7 @@ setup(
     ],
     keywords="dask saturn cloud distributed cluster",
     description="Dask Cluster objects in Saturn Cloud",
-    long_description=(
-        open("README.md").read() if os.path.exists("README.md") else ""
-    ),
+    long_description=(open("README.md").read() if os.path.exists("README.md") else ""),
     url="https://saturncloud.io/",
     project_urls={
         "Documentation": "http://doc.saturncloud.io",

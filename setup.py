@@ -29,7 +29,7 @@ setup(
     long_description=(open("README.md").read() if os.path.exists("README.md") else ""),
     url="https://saturncloud.io/",
     project_urls={
-        "Documentation": "http://doc.saturncloud.io",
+        "Documentation": "http://docs.saturncloud.io",
         "Source": "https://github.com/saturncloud/dask-saturn",
         "Issue Tracker": "https://github.com/saturncloud/dask-saturn/issues",
     },

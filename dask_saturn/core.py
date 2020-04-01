@@ -25,6 +25,8 @@ class SaturnCluster(SpecCluster):
     def __init__(self, cluster_url=None):
         if cluster_url is None:
             cluster_url = _start()
+        if not cluster_url.endswith('/'):
+            cluster_url = cluster_url + '/'
         self.cluster_url = cluster_url
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
@@ -86,4 +88,5 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
-        return response.json()
+        for pc in self.periodic_callbacks.values():
+            pc.stop()

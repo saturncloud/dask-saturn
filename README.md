@@ -1,13 +1,16 @@
 # dask-saturn
-Python library for interacting with dask clusters in Saturn.
+Python library for interacting with [Dask](https://dask.org/) clusters in
+[Saturn Cloud](https://www.saturncloud.io/).
 
-Dask-Saturn mimics the API of Dask-Kubernetes but allows the user
-to interact with clusters created within Saturn Cloud.
+Dask-Saturn mimics the API of
+[Dask-Kubernetes](https://github.com/dask/dask-kubernetes), but allows the user
+to interact with clusters created within
+[Saturn Cloud](https://www.saturncloud.io/).
 
 ## Start cluster
-The first step for using dask within Saturn is to create a dask
-cluster in the Saturn User Interface. Then from within a jupyter
-notebook you can start the cluster and adjust the number of workers.
+In order to interact with a Dask cluster, the cluster must first be created in
+the Saturn User Interface. Then, from within a Jupyter notebook, you can start
+the cluster and adjust the number of workers.
 
 ```python
 from dask_saturn import SaturnCluster
@@ -20,20 +23,20 @@ cluster
 Once you have a cluster you can interact with it via the jupyter
 widget, or using the `scale` and `adapt` methods.
 
-For instance, to manually scale up to 20 workers:
+For example, to manually scale up to 20 workers:
 
 ```python
 cluster.scale(20)
 ```
 
-To create an adaptive cluster that controls it's own scaling:
+To create an adaptive cluster that controls its own scaling:
 
 ```python
 cluster.adapt(minimum=1, maximum=20)
 ```
 
 ## Interact with client
-To submit tasks to the cluster you sometimes need access to the
+To submit tasks to the cluster, you sometimes need access to the
 `Client` object. Instantiate this with the cluster as the only argument:
 
 ```python

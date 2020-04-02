@@ -27,6 +27,7 @@ setup(
     keywords="dask saturn cloud distributed cluster",
     description="Dask Cluster objects in Saturn Cloud",
     long_description=(open("README.md").read() if os.path.exists("README.md") else ""),
+    long_description_content_type="text/markdown",
     url="https://saturncloud.io/",
     project_urls={
         "Documentation": "http://docs.saturncloud.io",
@@ -34,7 +35,7 @@ setup(
         "Issue Tracker": "https://github.com/saturncloud/dask-saturn/issues",
     },
     packages=find_packages(),
-    package_data={"dask_saturm": ["*.yaml"]},
+    package_data={"dask_saturn": ["*.yaml"]},
     install_requires=install_requires,
     tests_require=["pytest"],
     zip_safe=False,

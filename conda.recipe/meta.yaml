@@ -1,0 +1,46 @@
+{% set name = "dask-saturn" %}
+{% set version = "0.0.1" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
+  sha256: 47b7438462b01ed4771a24ce749d33b697383e6348208872b9d934531d495840
+
+build:
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv"
+
+requirements:
+  host:
+    - distributed
+    - pip
+    - python
+    - requests
+  run:
+    - distributed
+    - python
+    - requests
+
+test:
+  imports:
+    - dask_saturn
+  requires:
+    - pytest
+
+about:
+  home: "https://saturncloud.io/"
+  license: BSD
+  license_family: BSD
+  license_file: LICENSE
+  summary: "Dask Cluster objects in Saturn Cloud"
+  doc_url: http://docs.saturncloud.io
+  dev_url: https://github.com/saturncloud/dask-saturn
+
+extra:
+  recipe-maintainers:
+    - jsignell
+    - forana
+    - hhuuggoo

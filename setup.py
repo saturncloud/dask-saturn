@@ -12,7 +12,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     maintainer="Saturn Cloud Developers",
     maintainer_email="dev@saturncloud.io",
-    license="BSD",
+    license="BSD-3-Clause",
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",

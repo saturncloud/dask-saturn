@@ -32,7 +32,7 @@ test:
 
 about:
   home: "https://saturncloud.io/"
-  license: BSD
+  license: BSD-3-Clause
   license_family: BSD
   license_file: LICENSE
   summary: "Dask Cluster objects in Saturn Cloud"

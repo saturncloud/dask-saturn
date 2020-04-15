@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import json
 from urllib.parse import urljoin
@@ -10,24 +11,12 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 
 
-def _start():
-    """Start a cluster that has already been defined for the project"""
-    url = urljoin(BASE_URL, "api/dask_clusters")
-
-    response = requests.post(url, headers=HEADERS)
-    if not response.ok:
-        raise ValueError(response.reason)
-    id = response.json()["id"]
-    return f"{url}/{id}/"
-
-
 class SaturnCluster(SpecCluster):
-    def __init__(self, cluster_url=None):
+    def __init__(self, cluster_url=None, *args, **kwargs):
         if cluster_url is None:
-            cluster_url = _start()
-        if not cluster_url.endswith("/"):
-            cluster_url = cluster_url + "/"
-        self.cluster_url = cluster_url
+            self._start(retries=10, sleep=10)
+        else:
+            self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
@@ -36,11 +25,18 @@ class SaturnCluster(SpecCluster):
 
     @property
     def status(self):
+        if self.cluster_url is None:
+            return "closed"
         url = urljoin(self.cluster_url, "status")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
-            raise ValueError(response.reason)
+            return self._get_pod_status()
         return response.json()["status"]
+
+    def _get_pod_status(self):
+        response = requests.get(self.cluster_url[:-1], headers=HEADERS)
+        if response.ok:
+            return response.json()["status"]
 
     @property
     def _supports_scaling(self):
@@ -59,8 +55,41 @@ class SaturnCluster(SpecCluster):
         url = urljoin(self.cluster_url, "scheduler_info")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
+            if self._get_pod_status() in ["error", "closed", "stopped"]:
+                for pc in self.periodic_callbacks.values():
+                    pc.stop()
+                raise ValueError("Cluster is not running.")
             raise ValueError(response.reason)
         return response.json()
+
+    def _start(self, retries=0, sleep=0):
+        """Start a cluster that has already been defined for the project"""
+        url = urljoin(BASE_URL, "api/dask_clusters")
+        max_retries = retries
+        self.cluster_url = None
+
+        while self.cluster_url is None:
+            response = requests.post(url, headers=HEADERS)
+            if not response.ok:
+                raise ValueError(response.reason)
+            data = response.json()
+            if data["status"] == "error":
+                raise ValueError(" ".join(data["errors"]))
+            elif data["status"] == "ready":
+                self.cluster_url = f"{url}/{data['id']}/"
+            else:
+                print(f"Starting cluster. Status: {data['status']}")
+
+            if self.cluster_url is None:
+                if retries <= 0:
+                    raise ValueError(
+                        "Retry in a few minutes. Check status in Saturn User Interface"
+                    )
+                retries -= 1
+                time.sleep(sleep)
+
+        if 0 < retries < max_retries:
+            print("Cluster is ready")
 
     def _get_info(self):
         url = urljoin(self.cluster_url, "info")

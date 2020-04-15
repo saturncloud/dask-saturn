@@ -30,8 +30,13 @@ class SaturnCluster(SpecCluster):
         url = urljoin(self.cluster_url, "status")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
-            raise ValueError(response.reason)
+            return self._get_pod_status()
         return response.json()["status"]
+
+    def _get_pod_status(self):
+        response = requests.get(self.cluster_url[:-1], headers=HEADERS)
+        if response.ok:
+            return response.json()["status"]
 
     @property
     def _supports_scaling(self):
@@ -50,6 +55,10 @@ class SaturnCluster(SpecCluster):
         url = urljoin(self.cluster_url, "scheduler_info")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
+            if self._get_pod_status() in ["error", "closed", "stopped"]:
+                for pc in self.periodic_callbacks.values():
+                    pc.stop()
+                raise ValueError("Cluster is not running.")
             raise ValueError(response.reason)
         return response.json()
 

@@ -25,6 +25,8 @@ class SaturnCluster(SpecCluster):
 
     @property
     def status(self):
+        if self.cluster_url is None:
+            return "closed"
         url = urljoin(self.cluster_url, "status")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:

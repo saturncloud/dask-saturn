@@ -15,7 +15,7 @@ the cluster and adjust the number of workers.
 ```python
 from dask_saturn import SaturnCluster
 
-cluster = SaturnCluster
+cluster = SaturnCluster()
 cluster
 ```
 

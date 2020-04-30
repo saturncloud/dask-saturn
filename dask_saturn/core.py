@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import json
+import asyncio
 from urllib.parse import urljoin
 from distributed import SpecCluster
 
@@ -22,6 +23,7 @@ class SaturnCluster(SpecCluster):
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
+        self.lock = asyncio.Lock()
 
     @property
     def status(self):
@@ -50,6 +52,16 @@ class SaturnCluster(SpecCluster):
     def dashboard_link(self):
         return self._dashboard_link
 
+    def __await__(self):
+        async def _():
+            async with self.lock:
+                if self.status == "created":
+                    await self.start()
+                    assert self.status == "running"
+            return self
+
+        return _().__await__()
+
     @property
     def scheduler_info(self):
         url = urljoin(self.cluster_url, "scheduler_info")
@@ -61,6 +73,12 @@ class SaturnCluster(SpecCluster):
                 raise ValueError("Cluster is not running.")
             raise ValueError(response.reason)
         return response.json()
+
+    async def start(self):
+        if self.cluster_url is not None:
+            return
+        else:
+            await self._start(retries=10, sleep=10)
 
     def _start(self, retries=0, sleep=0):
         """Start a cluster that has already been defined for the project"""

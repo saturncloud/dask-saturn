@@ -1,10 +1,10 @@
 import os
-import time
 import requests
 import json
 import asyncio
 from urllib.parse import urljoin
 from distributed import SpecCluster
+from distributed.utils import LoopRunner
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
@@ -13,32 +13,44 @@ HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 
 
 class SaturnCluster(SpecCluster):
-    def __init__(self, cluster_url=None, *args, **kwargs):
-        if cluster_url is None:
-            self._start(retries=10, sleep=10)
-        else:
-            self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
-        info = self._get_info()
-        self._dashboard_link = info["dashboard_link"]
-        self._scheduler_address = info["scheduler_address"]
-        self.loop = None
-        self.periodic_callbacks = {}
-        self.lock = asyncio.Lock()
+    cluster_url = None
+    _scheduler_address = None
+    _dashboard_link = None
 
-    @property
-    def status(self):
-        if self.cluster_url is None:
-            return "closed"
+    def __init__(self, loop=None, asynchronous=False, **kwargs):
+        if len(self._instances) >= 1:
+            i = [i for i in self._instances][0]
+            raise KeyError(
+                "Cannot start new cluster. " f"Cluster already exists at: {i.scheduler_address}."
+            )
+        else:
+            self._loop_runner = LoopRunner(loop=loop, asynchronous=asynchronous)
+            self.loop = self._loop_runner.loop
+            self.periodic_callbacks = {}
+            self._lock = asyncio.Lock()
+            self._asynchronous = asynchronous
+            self._instances.add(self)
+        self.status = "created"
+
+        if not self.asynchronous:
+            self._loop_runner.start()
+            self.sync(self._start)
+
+    def _refresh_status(self):
         url = urljoin(self.cluster_url, "status")
         response = requests.get(url, headers=HEADERS)
-        if not response.ok:
-            return self._get_pod_status()
-        return response.json()["status"]
+        if response.ok:
+            self.status = response.json()["status"]
+        else:
+            self._get_pod_status()
 
     def _get_pod_status(self):
         response = requests.get(self.cluster_url[:-1], headers=HEADERS)
         if response.ok:
-            return response.json()["status"]
+            data = response.json()
+            self.status = data["status"]
+        else:
+            self.status = "closed"
 
     @property
     def _supports_scaling(self):
@@ -54,67 +66,56 @@ class SaturnCluster(SpecCluster):
 
     def __await__(self):
         async def _():
-            async with self.lock:
-                if self.status == "created":
-                    await self.start()
-                    assert self.status == "running"
+            if self.status == "created":
+                await self._start()
             return self
 
         return _().__await__()
 
     @property
     def scheduler_info(self):
+        if self.cluster_url is None:
+            return {"workers": {}}
         url = urljoin(self.cluster_url, "scheduler_info")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
-            if self._get_pod_status() in ["error", "closed", "stopped"]:
+            self._refresh_status()
+            if self.status in ["error", "closed", "stopped"]:
                 for pc in self.periodic_callbacks.values():
                     pc.stop()
+            if self.status == "error":
                 raise ValueError("Cluster is not running.")
-            raise ValueError(response.reason)
+            return {"workers": {}}
         return response.json()
 
-    async def start(self):
-        if self.cluster_url is not None:
+    async def _start(self):
+        """Start a cluster"""
+        while self.status == "starting":
+            await asyncio.sleep(1)
+            print(f"Starting cluster. Status: {self.status}")
+            if self.cluster_url is not None:
+                self._refresh_status()
+        if self.status == "running":
             return
-        else:
-            await self._start(retries=10, sleep=10)
+        if self.status == "closed":
+            raise ValueError("Cluster is closed")
 
-    def _start(self, retries=0, sleep=0):
-        """Start a cluster that has already been defined for the project"""
+        self.status = "starting"
+
         url = urljoin(BASE_URL, "api/dask_clusters")
-        max_retries = retries
-        self.cluster_url = None
-
-        while self.cluster_url is None:
-            response = requests.post(url, headers=HEADERS)
-            if not response.ok:
-                raise ValueError(response.reason)
-            data = response.json()
-            if data["status"] == "error":
-                raise ValueError(" ".join(data["errors"]))
-            elif data["status"] == "ready":
-                self.cluster_url = f"{url}/{data['id']}/"
-            else:
-                print(f"Starting cluster. Status: {data['status']}")
-
-            if self.cluster_url is None:
-                if retries <= 0:
-                    raise ValueError(
-                        "Retry in a few minutes. Check status in Saturn User Interface"
-                    )
-                retries -= 1
-                time.sleep(sleep)
-
-        if 0 < retries < max_retries:
-            print("Cluster is ready")
-
-    def _get_info(self):
-        url = urljoin(self.cluster_url, "info")
-        response = requests.get(url, headers=HEADERS)
+        response = requests.post(url, headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
-        return response.json()
+        data = response.json()
+
+        self.status = data["status"]
+        if self.status == "error":
+            raise ValueError(" ".join(data["errors"]))
+
+        self.cluster_url = f"{url}/{data['id']}/"
+        self._dashboard_link = data["dashboard_address"]
+        self._scheduler_address = data["scheduler_address"]
+        self._refresh_status()
 
     def scale(self, n):
         """Scale cluster to have ``n`` workers"""
@@ -132,7 +133,14 @@ class SaturnCluster(SpecCluster):
         if not response.ok:
             raise ValueError(response.reason)
 
-    def close(self):
+    async def _close(self):
+        while self.status == "closing":
+            await asyncio.sleep(1)
+            self._refresh_status()
+        if self.status in ["stopped", "closed"]:
+            return
+        self.status = "closing"
+
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=HEADERS)
         if not response.ok:

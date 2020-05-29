@@ -12,7 +12,7 @@ from distributed import SpecCluster
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
-DEFAULT_WAIT_TIMEOUT=1200
+DEFAULT_WAIT_TIMEOUT_SECONDS=1200
 
 
 class SaturnCluster(SpecCluster):
@@ -78,7 +78,7 @@ class SaturnCluster(SpecCluster):
             "nthreads": kwargs.get("nthreads"),
         }
 
-        wait_timeout = kwargs.get("scheduler_service_wait_timeout", DEFAULT_WAIT_TIMEOUT)
+        wait_timeout = kwargs.get("scheduler_service_wait_timeout", DEFAULT_WAIT_TIMEOUT_SECONDS)
         expBackoff = ExpBackoff(wait_timeout=wait_timeout)
         while self.cluster_url is None:
             response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)

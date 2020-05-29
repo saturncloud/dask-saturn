@@ -143,7 +143,7 @@ class ExpBackoff:
             self.start_time = datetime.now()
 
         # Check if timeout has been reached
-        time_delta = (datetime.now() - self.start_time).seconds
+        time_delta = (datetime.now() - self.start_time).total_seconds()
         if time_delta >= self.wait_timeout:
             return False
 

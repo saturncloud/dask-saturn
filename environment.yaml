@@ -1,0 +1,8 @@
+name: dask-saturn
+channels:
+  - defaults
+dependencies:
+  - pip
+  - pip:
+      - requests
+      - distributed

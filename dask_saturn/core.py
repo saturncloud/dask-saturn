@@ -132,6 +132,23 @@ class SaturnCluster(SpecCluster):
         for pc in self.periodic_callbacks.values():
             pc.stop()
 
+
+def _options():
+    url = urljoin(BASE_URL, "api/dask_clusters/info")
+    response = requests.get(url, headers=HEADERS)
+    if not response.ok:
+        raise ValueError(response.reason)
+    return response.json()["server_options"]
+
+
+def list_sizes():
+    return [size["name"] for size in _options()["size"]]
+
+
+def describe_sizes():
+    return {size["name"]: size["display"] for size in _options()["size"]}
+
+
 class ExpBackoff:
     def __init__(self, wait_timeout=1200, min_sleep=5, max_sleep=60):
         self.wait_timeout = wait_timeout

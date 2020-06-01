@@ -16,9 +16,9 @@ DEFAULT_WAIT_TIMEOUT_SECONDS=1200
 
 
 class SaturnCluster(SpecCluster):
-    def __init__(self, cluster_url=None, *args, **kwargs):
+    def __init__(self, cluster_url=None, reset=False, *args, **kwargs):
         if cluster_url is None:
-            self._start(**kwargs)
+            self._start(reset=reset, **kwargs)
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
         info = self._get_info()
@@ -66,7 +66,7 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
-    def _start(self, **kwargs):
+    def _start(self, reset=False, **kwargs):
         """Start a cluster that has already been defined for the project"""
         url = urljoin(BASE_URL, "api/dask_clusters")
         self.cluster_url = None
@@ -76,6 +76,7 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": kwargs.get("scheduler_size"),
             "nprocs": kwargs.get("nprocs"),
             "nthreads": kwargs.get("nthreads"),
+            "reset": reset,
         }
 
         wait_timeout = kwargs.get("scheduler_service_wait_timeout", DEFAULT_WAIT_TIMEOUT_SECONDS)

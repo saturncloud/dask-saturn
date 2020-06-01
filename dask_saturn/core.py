@@ -7,6 +7,7 @@ from datetime import datetime
 from random import randrange
 from urllib.parse import urljoin
 from distributed import SpecCluster
+from typing import List, Dict
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
@@ -16,9 +17,9 @@ DEFAULT_WAIT_TIMEOUT_SECONDS=1200
 
 
 class SaturnCluster(SpecCluster):
-    def __init__(self, cluster_url=None, reset=False, *args, **kwargs):
+    def __init__(self, cluster_url=None, *args, **kwargs):
         if cluster_url is None:
-            self._start(reset=reset, **kwargs)
+            self._start(**kwargs)
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
         info = self._get_info()
@@ -26,6 +27,15 @@ class SaturnCluster(SpecCluster):
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
+    
+    @classmethod
+    def reset(cls, **kwargs):
+        print(f"Resetting cluster.")
+        url = urljoin(BASE_URL, "api/dask_clusters/reset")
+        response = requests.post(url, data=json.dumps(kwargs), headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        return cls()
 
     @property
     def status(self):
@@ -66,7 +76,7 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
-    def _start(self, reset=False, **kwargs):
+    def _start(self, **kwargs):
         """Start a cluster that has already been defined for the project"""
         url = urljoin(BASE_URL, "api/dask_clusters")
         self.cluster_url = None
@@ -76,7 +86,6 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": kwargs.get("scheduler_size"),
             "nprocs": kwargs.get("nprocs"),
             "nthreads": kwargs.get("nthreads"),
-            "reset": reset,
         }
 
         wait_timeout = kwargs.get("scheduler_service_wait_timeout", DEFAULT_WAIT_TIMEOUT_SECONDS)
@@ -141,16 +150,26 @@ def _options():
     return response.json()["server_options"]
 
 
-def list_sizes():
+def list_sizes() -> List[str]:
     return [size["name"] for size in _options()["size"]]
 
 
-def describe_sizes():
+def describe_sizes() -> Dict[str,str]:
     return {size["name"]: size["display"] for size in _options()["size"]}
 
 
 class ExpBackoff:
     def __init__(self, wait_timeout=1200, min_sleep=5, max_sleep=60):
+        """
+        Used to generate sleep times with a capped exponential backoff.
+        Jitter reduces contention on the event of multiple clients making
+        these calls at the same time.
+
+        :param wait_timeout: Maximum total time in seconds to wait before timing out
+        :param min_sleep: Minimum amount of time to sleep in seconds
+        :param max_sleep: Maximum time to sleep over one period in seconds
+        :return: Boolean indicating if current wait time is less than wait_timeout
+        """
         self.wait_timeout = wait_timeout
         self.max_sleep = max_sleep
         self.min_sleep = min_sleep

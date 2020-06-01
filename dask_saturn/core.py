@@ -34,7 +34,7 @@ class SaturnCluster(SpecCluster):
                 scheduler_size=scheduler_size,
                 nprocs=nprocs,
                 nthreads=nthreads,
-                wait_timeout=scheduler_service_wait_timeout
+                scheduler_service_wait_timeout=scheduler_service_wait_timeout
             )
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
@@ -45,7 +45,14 @@ class SaturnCluster(SpecCluster):
         self.periodic_callbacks = {}
 
     @classmethod
-    def reset(cls, worker_size=None, scheduler_size=None, nprocs=None, nthreads=None):
+    def reset(
+            cls,
+            worker_size=None,
+            scheduler_size=None,
+            nprocs=None,
+            nthreads=None,
+            scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
+        ):
         """Destroys an existing Dask cluster attached to the Jupyter Notebook or
         Custom Deployment, and recreates it with the given configuration"""
         print(f"Resetting cluster.")
@@ -106,7 +113,7 @@ class SaturnCluster(SpecCluster):
             scheduler_size=None,
             nprocs=None,
             nthreads=None,
-            wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
+            scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
         ):
         """Start a cluster that has already been defined for the project"""
         url = urljoin(BASE_URL, "api/dask_clusters")
@@ -119,7 +126,7 @@ class SaturnCluster(SpecCluster):
             "nthreads": nthreads,
         }
 
-        expBackoff = ExpBackoff(wait_timeout=wait_timeout)
+        expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         while self.cluster_url is None:
             response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
             if not response.ok:

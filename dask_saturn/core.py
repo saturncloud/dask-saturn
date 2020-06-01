@@ -17,9 +17,25 @@ DEFAULT_WAIT_TIMEOUT_SECONDS=1200
 
 
 class SaturnCluster(SpecCluster):
-    def __init__(self, cluster_url=None, *args, **kwargs):
+    def __init__(
+        self,
+        cluster_url=None,
+        worker_size=None,
+        scheduler_size=None,
+        nprocs=None,
+        nthreads=None,
+        scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
+        *args,
+        **kwargs
+    ):
         if cluster_url is None:
-            self._start(**kwargs)
+            self._start(
+                worker_size=worker_size,
+                scheduler_size=scheduler_size,
+                nprocs=nprocs,
+                nthreads=nthreads,
+                wait_timeout=scheduler_service_wait_timeout
+            )
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
         info = self._get_info()
@@ -27,12 +43,20 @@ class SaturnCluster(SpecCluster):
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
-    
+
     @classmethod
-    def reset(cls, **kwargs):
+    def reset(cls, worker_size=None, scheduler_size=None, nprocs=None, nthreads=None):
+        """Destroys an existing Dask cluster attached to the Jupyter Notebook or
+        Custom Deployment, and recreates it with the given configuration"""
         print(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
-        response = requests.post(url, data=json.dumps(kwargs), headers=HEADERS)
+        cluster_config = {
+            "worker_size": worker_size,
+            "scheduler_size": scheduler_size,
+            "nprocs": nprocs,
+            "nthreads": nthreads,
+        }
+        response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
         return cls()
@@ -76,19 +100,25 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
-    def _start(self, **kwargs):
+    def _start(
+            self,
+            worker_size=None,
+            scheduler_size=None,
+            nprocs=None,
+            nthreads=None,
+            wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
+        ):
         """Start a cluster that has already been defined for the project"""
         url = urljoin(BASE_URL, "api/dask_clusters")
         self.cluster_url = None
 
         cluster_config = {
-            "worker_size": kwargs.get("worker_size"),
-            "scheduler_size": kwargs.get("scheduler_size"),
-            "nprocs": kwargs.get("nprocs"),
-            "nthreads": kwargs.get("nthreads"),
+            "worker_size": worker_size,
+            "scheduler_size": scheduler_size,
+            "nprocs": nprocs,
+            "nthreads": nthreads,
         }
 
-        wait_timeout = kwargs.get("scheduler_service_wait_timeout", DEFAULT_WAIT_TIMEOUT_SECONDS)
         expBackoff = ExpBackoff(wait_timeout=wait_timeout)
         while self.cluster_url is None:
             response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
@@ -151,10 +181,12 @@ def _options():
 
 
 def list_sizes() -> List[str]:
+    """Returns a list of the valid size options for worker_size and scheduler size"""
     return [size["name"] for size in _options()["size"]]
 
 
 def describe_sizes() -> Dict[str,str]:
+    """Returns a dict of size options with a description"""
     return {size["name"]: size["display"] for size in _options()["size"]}
 
 

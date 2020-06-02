@@ -8,6 +8,7 @@ from random import randrange
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from typing import List, Dict
+from math import ceil
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
@@ -226,7 +227,7 @@ class ExpBackoff:
         # Generate exp backoff with jitter
         self.retries += 1
         backoff = min(self.max_sleep, self.min_sleep * 2 ** self.retries) / 2
-        jitter = randrange(0, backoff)
+        jitter = randrange(0, ceil(backoff))
         wait_time = backoff + jitter
 
         # Make sure we aren't waiting longer than wait_timeout

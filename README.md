@@ -54,3 +54,18 @@ To terminate all resources associated with a cluster, use the
 ```python
 cluster.close()
 ```
+
+## Development
+
+Create/update a dask-saturn conda environment:
+
+```sh
+make conda-update
+```
+
+Set environment variables to run dask-saturn with a local atlas server:
+
+```sh
+export BASE_URL=http://dev.localtest.me:8888/
+export SATURN_TOKEN=<JUPYTER_SERVER_SATURN_TOKEN>
+```

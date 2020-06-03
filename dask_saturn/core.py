@@ -1,15 +1,12 @@
 import os
-import time
 import requests
 import json
 
-from datetime import datetime
-from random import randrange
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from typing import List, Dict
-from math import ceil
 
+from .backoff import ExpBackoff
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "")
@@ -20,13 +17,13 @@ DEFAULT_WAIT_TIMEOUT_SECONDS=1200
 class SaturnCluster(SpecCluster):
     def __init__(
         self,
+        *args,
         cluster_url=None,
         worker_size=None,
         scheduler_size=None,
         nprocs=None,
         nthreads=None,
         scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
-        *args,
         **kwargs
     ):
         if cluster_url is None:
@@ -54,8 +51,11 @@ class SaturnCluster(SpecCluster):
             nthreads=None,
             scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
         ):
-        """Destroys an existing Dask cluster attached to the Jupyter Notebook or
-        Custom Deployment, and recreates it with the given configuration"""
+        """Return a SaturnCluster
+
+        Destroy existing Dask cluster attached to the Jupyter Notebook or
+        Custom Deployment and recreate it with the given configuration.
+        """
         print(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
@@ -116,7 +116,7 @@ class SaturnCluster(SpecCluster):
             nthreads=None,
             scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS
         ):
-        """Start a cluster that has already been defined for the project"""
+        """Start a cluster that has already been defined for the project."""
         url = urljoin(BASE_URL, "api/dask_clusters")
         self.cluster_url = None
 
@@ -189,51 +189,10 @@ def _options():
 
 
 def list_sizes() -> List[str]:
-    """Returns a list of the valid size options for worker_size and scheduler size"""
+    """Return a list of valid size options for worker_size and scheduler size."""
     return [size["name"] for size in _options()["size"]]
 
 
 def describe_sizes() -> Dict[str,str]:
-    """Returns a dict of size options with a description"""
+    """Return a dict of size options with a description."""
     return {size["name"]: size["display"] for size in _options()["size"]}
-
-
-class ExpBackoff:
-    def __init__(self, wait_timeout=1200, min_sleep=5, max_sleep=60):
-        """
-        Used to generate sleep times with a capped exponential backoff.
-        Jitter reduces contention on the event of multiple clients making
-        these calls at the same time.
-
-        :param wait_timeout: Maximum total time in seconds to wait before timing out
-        :param min_sleep: Minimum amount of time to sleep in seconds
-        :param max_sleep: Maximum time to sleep over one period in seconds
-        :return: Boolean indicating if current wait time is less than wait_timeout
-        """
-        self.wait_timeout = wait_timeout
-        self.max_sleep = max_sleep
-        self.min_sleep = min_sleep
-        self.retries = 0
-    
-    def wait(self):
-        if self.retries == 0:
-            self.start_time = datetime.now()
-
-        # Check if timeout has been reached
-        time_delta = (datetime.now() - self.start_time).total_seconds()
-        if time_delta >= self.wait_timeout:
-            return False
-
-        # Generate exp backoff with jitter
-        self.retries += 1
-        backoff = min(self.max_sleep, self.min_sleep * 2 ** self.retries) / 2
-        jitter = randrange(0, ceil(backoff))
-        wait_time = backoff + jitter
-
-        # Make sure we aren't waiting longer than wait_timeout
-        remaining_time = self.wait_timeout - time_delta
-        if remaining_time < wait_time:
-            wait_time = remaining_time
-
-        time.sleep(wait_time)
-        return True

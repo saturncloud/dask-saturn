@@ -1,0 +1,7 @@
+name: dask-saturn
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - requests
+  - distributed

@@ -17,19 +17,35 @@ class SaturnCluster(SpecCluster):
     _scheduler_address = None
     _dashboard_link = None
 
-    def __init__(self, loop=None, asynchronous=False, **kwargs):
+    def __init__(
+        self,
+        n_workers=0,
+        loop=None,
+        asynchronous=False,
+        worker_size=None,
+        scheduler_size=None,
+        nprocs=1,
+        nthreads=1,
+        **kwargs,
+    ):
         if len(self._instances) >= 1:
             i = [i for i in self._instances][0]
             raise KeyError(
                 "Cannot start new cluster. " f"Cluster already exists at: {i.scheduler_address}."
             )
         else:
+            self.n_workers = n_workers
+            self.worker_size = worker_size
+            self.scheduler_size = scheduler_size
+            self.nprocs = nprocs
+            self.nthreads = nthreads
             self._loop_runner = LoopRunner(loop=loop, asynchronous=asynchronous)
             self.loop = self._loop_runner.loop
             self.periodic_callbacks = {}
             self._lock = asyncio.Lock()
             self._asynchronous = asynchronous
             self._instances.add(self)
+            self._correct_state_waiting = None
         self.status = "created"
 
         if not self.asynchronous:
@@ -88,6 +104,12 @@ class SaturnCluster(SpecCluster):
             return {"workers": {}}
         return response.json()
 
+    def __enter__(self):
+        self.status = "starting"
+        self.sync(self._start)
+        assert self.status == "running"
+        return self
+
     async def _start(self):
         """Start a cluster"""
         while self.status == "starting":
@@ -102,8 +124,16 @@ class SaturnCluster(SpecCluster):
 
         self.status = "starting"
 
+        cluster_config = {
+            "n_workers": self.n_workers,
+            "worker_size": self.worker_size,
+            "scheduler_size": self.scheduler_size,
+            "nprocs": self.nprocs,
+            "nthreads": self.nthreads,
+        }
+
         url = urljoin(BASE_URL, "api/dask_clusters")
-        response = requests.post(url, headers=HEADERS)
+        response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
         data = response.json()

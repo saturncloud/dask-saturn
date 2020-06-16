@@ -61,7 +61,7 @@ class SaturnCluster(SpecCluster):
             self.status = response.json()["status"]
         else:
             self._get_pod_status()
- 
+
     def _get_pod_status(self):
         response = requests.get(self.cluster_url[:-1], headers=HEADERS)
         if response.ok:
@@ -211,6 +211,11 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
             pc.stop()
+
+    def __del__(self):
+        print("IN __DEL__")
+        if self.status != "closed":
+            print("LEAVING OPEN")
 
 
 def _options():

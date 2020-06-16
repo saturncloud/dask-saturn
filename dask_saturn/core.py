@@ -127,11 +127,13 @@ class SaturnCluster(SpecCluster):
                 self._refresh_status()
 
         if self.status in ["running", "ready"]:
+            print(f"Cluster is {self.status}")
             return
         if self.status == "closed":
             raise ValueError("Cluster is closed")
 
         self.status = "starting"
+        print(f"Starting cluster. Status: {self.status}")
 
         cluster_config = {
             "n_workers": self.n_workers,
@@ -201,9 +203,6 @@ class SaturnCluster(SpecCluster):
         if not response.ok:
             raise ValueError(response.reason)
 
-    # async def _close(self):
-    #     raise NotImplementedError
-
     async def _close(self):
         while self.status == "closing":
             await asyncio.sleep(1)
@@ -220,6 +219,7 @@ class SaturnCluster(SpecCluster):
             pc.stop()
 
     def close(self, timeout=None):
+        # let close fail if there is a RunTimeError - this means the process was killed
         return self.sync(self._close, callback_timeout=timeout)
 
     def __exit__(self, typ, value, traceback):

@@ -47,7 +47,7 @@ class SaturnCluster(SpecCluster):
         self.periodic_callbacks = {}
         self._lock = asyncio.Lock()
         self._asynchronous = asynchronous
-        self._instances.add(self)
+        # self._instances.add(self)
         self._correct_state_waiting = None
         self.close_when_done = close_when_done
         self.status = "created"

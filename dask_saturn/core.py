@@ -6,6 +6,7 @@ import asyncio
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from distributed.utils import LoopRunner
+from typing import List, Dict
 
 from .backoff import ExpBackoff
 
@@ -60,7 +61,7 @@ class SaturnCluster(SpecCluster):
             self.status = response.json()["status"]
         else:
             self._get_pod_status()
-
+ 
     def _get_pod_status(self):
         response = requests.get(self.cluster_url[:-1], headers=HEADERS)
         if response.ok:
@@ -210,3 +211,21 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
             pc.stop()
+
+
+def _options():
+    url = urljoin(BASE_URL, "api/dask_clusters/info")
+    response = requests.get(url, headers=HEADERS)
+    if not response.ok:
+        raise ValueError(response.reason)
+    return response.json()["server_options"]
+
+
+def list_sizes() -> List[str]:
+    """Return a list of valid size options for worker_size and scheduler size."""
+    return [size["name"] for size in _options()["size"]]
+
+
+def describe_sizes() -> Dict[str, str]:
+    """Return a dict of size options with a description."""
+    return {size["name"]: size["display"] for size in _options()["size"]}

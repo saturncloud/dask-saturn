@@ -14,7 +14,7 @@ class ExpBackoff:
         :param wait_timeout: Maximum total time in seconds to wait before timing out
         :param min_sleep: Minimum amount of time to sleep in seconds
         :param max_sleep: Maximum time to sleep over one period in seconds
-        :return: Boolean indicating if current wait time is less than wait_timeout
+        :return: asyncio.sleep or raises error if current wait time is greater than wait_timeout
         """
         self.wait_timeout = wait_timeout
         self.max_sleep = max_sleep

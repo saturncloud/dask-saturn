@@ -215,8 +215,15 @@ class SaturnCluster(SpecCluster):
             pc.stop()
 
     def close(self, timeout=None):
+        print("CLOSING")
         self.status = "closing"
         return super().close(timeout=timeout)
+
+    def __exit__(self, typ, value, traceback):
+        print("EXITING")
+        if self.close_when_done:
+            super().__exit__(typ, value, traceback)
+            self._loop_runner.stop()
 
 
 def _options():

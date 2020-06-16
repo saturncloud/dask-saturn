@@ -2,6 +2,8 @@ import os
 import requests
 import json
 import asyncio
+import atexit
+import weakref
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -21,6 +23,7 @@ class SaturnCluster(SpecCluster):
     cluster_url = None
     _scheduler_address = None
     _dashboard_link = None
+    _instances = weakref.WeakSet()
 
     def __init__(
         self,
@@ -47,7 +50,7 @@ class SaturnCluster(SpecCluster):
         self.periodic_callbacks = {}
         self._lock = asyncio.Lock()
         self._asynchronous = asynchronous
-        # self._instances.add(self)
+        self._instances.add(self)
         self._correct_state_waiting = None
         self.close_when_done = close_when_done
         self.status = "created"
@@ -111,7 +114,7 @@ class SaturnCluster(SpecCluster):
     def __enter__(self):
         self.status = "starting"
         self.sync(self._start)
-        assert self.status == "running"
+        assert self.status in ["running", "ready"]
         return self
 
     async def _start(self):
@@ -124,7 +127,7 @@ class SaturnCluster(SpecCluster):
             if self.cluster_url is not None:
                 self._refresh_status()
 
-        if self.status == "running":
+        if self.status in ["running", "ready"]:
             return
         if self.status == "closed":
             raise ValueError("Cluster is closed")
@@ -216,12 +219,20 @@ class SaturnCluster(SpecCluster):
 
     def __exit__(self, typ, value, traceback):
         if self.close_when_done:
-            super().__exit__(typ, value, traceback)
+            self.close()
             self._loop_runner.stop()
 
     async def __aexit__(self, typ, value, traceback):
         if self.close_when_done:
             await self.close()
+
+
+@atexit.register
+def close_clusters():
+    print("AT EXIT")
+    for cluster in list(SaturnCluster._instances):
+        if cluster.close_when_done and cluster.status != "closed":
+            cluster.close(timeout=10)
 
 
 def _options():

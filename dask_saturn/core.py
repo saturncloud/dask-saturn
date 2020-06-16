@@ -200,8 +200,6 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     async def _close(self):
-        print("CLOSING")
-        assert False
         while self.status == "closing":
             await asyncio.sleep(1)
             self._refresh_status()
@@ -217,13 +215,11 @@ class SaturnCluster(SpecCluster):
             pc.stop()
 
     def __exit__(self, typ, value, traceback):
-        print("EXITING")
         if self.close_when_done:
             super().__exit__(typ, value, traceback)
             self._loop_runner.stop()
 
     async def __aexit__(self, typ, value, traceback):
-        print("AEXITING")
         if self.close_when_done:
             await self.close()
 

@@ -41,5 +41,4 @@ class ExpBackoff:
         if remaining_time < wait_time:
             wait_time = remaining_time
 
-        await asyncio.sleep(wait_time)
-        return True
+        return asyncio.sleep(wait_time)

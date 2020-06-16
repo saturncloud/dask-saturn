@@ -117,13 +117,10 @@ class SaturnCluster(SpecCluster):
 
         while self.status == "starting":
             print(f"Starting cluster. Status: {self.status}")
+            await expBackoff.wait()
             if self.cluster_url is not None:
                 self._refresh_status()
-            else:
-                if not await expBackoff.wait():
-                    raise ValueError(
-                        "Retry in a few minutes. Check status in Saturn User Interface"
-                    )
+
         if self.status == "running":
             return
         if self.status == "closed":

@@ -2,14 +2,18 @@ import os
 import requests
 import json
 import asyncio
+
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from distributed.utils import LoopRunner
+
+from .backoff import ExpBackoff
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
+DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
 
 class SaturnCluster(SpecCluster):
@@ -19,26 +23,26 @@ class SaturnCluster(SpecCluster):
 
     def __init__(
         self,
+        *args,
         n_workers=0,
-        loop=None,
-        asynchronous=False,
         worker_size=None,
         scheduler_size=None,
         nprocs=1,
         nthreads=1,
+        scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
+        loop=None,
+        asynchronous=False,
         **kwargs,
     ):
         if len(self._instances) >= 1:
-            i = [i for i in self._instances][0]
-            raise KeyError(
-                "Cannot start new cluster. " f"Cluster already exists at: {i.scheduler_address}."
-            )
+            return [i for i in self._instances][0]
         else:
             self.n_workers = n_workers
             self.worker_size = worker_size
             self.scheduler_size = scheduler_size
             self.nprocs = nprocs
             self.nthreads = nthreads
+            self.scheduler_service_wait_timeout = scheduler_service_wait_timeout
             self._loop_runner = LoopRunner(loop=loop, asynchronous=asynchronous)
             self.loop = self._loop_runner.loop
             self.periodic_callbacks = {}
@@ -112,11 +116,17 @@ class SaturnCluster(SpecCluster):
 
     async def _start(self):
         """Start a cluster"""
+        expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
+
         while self.status == "starting":
-            await asyncio.sleep(1)
             print(f"Starting cluster. Status: {self.status}")
             if self.cluster_url is not None:
                 self._refresh_status()
+            else:
+                if not expBackoff.wait():
+                    raise ValueError(
+                        "Retry in a few minutes. Check status in Saturn User Interface"
+                    )
         if self.status == "running":
             return
         if self.status == "closed":
@@ -146,6 +156,35 @@ class SaturnCluster(SpecCluster):
         self._dashboard_link = data["dashboard_address"]
         self._scheduler_address = data["scheduler_address"]
         self._refresh_status()
+
+    @classmethod
+    def reset(
+        cls,
+        n_workers=None,
+        worker_size=None,
+        scheduler_size=None,
+        nprocs=None,
+        nthreads=None,
+        scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
+    ):
+        """Return a SaturnCluster
+
+        Destroy existing Dask cluster attached to the Jupyter Notebook or
+        Custom Deployment and recreate it with the given configuration.
+        """
+        print(f"Resetting cluster.")
+        url = urljoin(BASE_URL, "api/dask_clusters/reset")
+        cluster_config = {
+            "n_workers": n_workers,
+            "worker_size": worker_size,
+            "scheduler_size": scheduler_size,
+            "nprocs": nprocs,
+            "nthreads": nthreads,
+        }
+        response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
+        if not response.ok:
+            raise ValueError(response.reason)
+        return cls()
 
     def scale(self, n):
         """Scale cluster to have ``n`` workers"""

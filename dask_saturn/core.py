@@ -203,6 +203,9 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     async def _close(self):
+        raise NotImplementedError
+
+    async def _close_special(self):
         while self.status == "closing":
             await asyncio.sleep(1)
             self._refresh_status()
@@ -216,6 +219,13 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
             pc.stop()
+
+    def close(self, timeout=None):
+        try:
+            return self.sync(self._close_special, callback_timeout=timeout)
+        except RuntimeError as err:
+            print("HERE")
+            raise err
 
     def __exit__(self, typ, value, traceback):
         if self.close_when_done:
@@ -231,7 +241,10 @@ class SaturnCluster(SpecCluster):
 def close_clusters():
     print("AT EXIT")
     for cluster in list(SaturnCluster._instances):
-        if cluster.close_when_done and cluster.status != "closed":
+        if not cluster.close_when_done:
+            cluster.status = "closed"
+        elif cluster.status != "closed":
+            raise ValueError
             cluster.close(timeout=10)
 
 

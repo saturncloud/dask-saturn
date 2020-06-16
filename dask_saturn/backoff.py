@@ -1,4 +1,4 @@
-from time import sleep
+import asyncio
 from datetime import datetime
 from math import ceil
 from random import randrange
@@ -21,7 +21,7 @@ class ExpBackoff:
         self.min_sleep = min_sleep
         self.retries = 0
 
-    def wait(self):
+    async def wait(self):
         if self.retries == 0:
             self.start_time = datetime.now()
 
@@ -41,5 +41,5 @@ class ExpBackoff:
         if remaining_time < wait_time:
             wait_time = remaining_time
 
-        sleep(wait_time)
+        await asyncio.sleep(wait_time)
         return True

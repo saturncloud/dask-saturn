@@ -123,7 +123,7 @@ class SaturnCluster(SpecCluster):
             if self.cluster_url is not None:
                 self._refresh_status()
             else:
-                if not expBackoff.wait():
+                if not await expBackoff.wait():
                     raise ValueError(
                         "Retry in a few minutes. Check status in Saturn User Interface"
                     )

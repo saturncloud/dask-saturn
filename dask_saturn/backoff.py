@@ -21,14 +21,14 @@ class ExpBackoff:
         self.min_sleep = min_sleep
         self.retries = 0
 
-    async def wait(self):
+    def wait(self):
         if self.retries == 0:
             self.start_time = datetime.now()
 
         # Check if timeout has been reached
         time_delta = (datetime.now() - self.start_time).total_seconds()
         if time_delta >= self.wait_timeout:
-            return False
+            raise ValueError("Retry in a few minutes. Check status in Saturn User Interface")
 
         # Generate exp backoff with jitter
         self.retries += 1

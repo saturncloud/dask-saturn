@@ -2,7 +2,8 @@ import os
 import requests
 import json
 import asyncio
-import atexit
+
+# import atexit
 import weakref
 
 from urllib.parse import urljoin
@@ -237,15 +238,15 @@ class SaturnCluster(SpecCluster):
             await self.close()
 
 
-@atexit.register
-def close_clusters():
-    print("AT EXIT")
-    for cluster in list(SaturnCluster._instances):
-        if not cluster.close_when_done:
-            cluster.status = "closed"
-        elif cluster.status != "closed":
-            raise ValueError
-            cluster.close(timeout=10)
+# @atexit.register
+# def close_clusters():
+#     print("AT EXIT")
+#     for cluster in list(SaturnCluster._instances):
+#         if not cluster.close_when_done:
+#             cluster.status = "closed"
+#         elif cluster.status != "closed":
+#             raise ValueError
+#             cluster.close(timeout=10)
 
 
 def _options():

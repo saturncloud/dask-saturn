@@ -31,6 +31,7 @@ class SaturnCluster(SpecCluster):
         nprocs=1,
         nthreads=1,
         scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
+        close_when_done=False,
         loop=None,
         asynchronous=False,
         **kwargs,
@@ -48,6 +49,7 @@ class SaturnCluster(SpecCluster):
         self._asynchronous = asynchronous
         self._instances.add(self)
         self._correct_state_waiting = None
+        self.close_when_done = close_when_done
         self.status = "created"
 
         if not self.asynchronous:
@@ -201,7 +203,7 @@ class SaturnCluster(SpecCluster):
         while self.status == "closing":
             await asyncio.sleep(1)
             self._refresh_status()
-        if self.status in ["stopped", "closed"]:
+        if self.status in ["stopped", "closed"] or not self.close_when_done:
             return
         self.status = "closing"
 
@@ -212,10 +214,9 @@ class SaturnCluster(SpecCluster):
         for pc in self.periodic_callbacks.values():
             pc.stop()
 
-    def __del__(self):
-        print("IN __DEL__")
-        if self.status != "closed":
-            print("LEAVING OPEN")
+    def close(self, timeout=None):
+        self.status = "closing"
+        return super().close(timeout=timeout)
 
 
 def _options():

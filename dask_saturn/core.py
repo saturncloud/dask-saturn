@@ -2,8 +2,6 @@ import os
 import requests
 import json
 import asyncio
-
-# import atexit
 import weakref
 
 from urllib.parse import urljoin
@@ -203,10 +201,10 @@ class SaturnCluster(SpecCluster):
         if not response.ok:
             raise ValueError(response.reason)
 
-    async def _close(self):
-        raise NotImplementedError
+    # async def _close(self):
+    #     raise NotImplementedError
 
-    async def _close_special(self):
+    async def _close(self):
         while self.status == "closing":
             await asyncio.sleep(1)
             self._refresh_status()
@@ -222,11 +220,7 @@ class SaturnCluster(SpecCluster):
             pc.stop()
 
     def close(self, timeout=None):
-        try:
-            return self.sync(self._close_special, callback_timeout=timeout)
-        except RuntimeError as err:
-            print("HERE")
-            raise err
+        return self.sync(self._close, callback_timeout=timeout)
 
     def __exit__(self, typ, value, traceback):
         if self.close_when_done:
@@ -236,17 +230,6 @@ class SaturnCluster(SpecCluster):
     async def __aexit__(self, typ, value, traceback):
         if self.close_when_done:
             await self.close()
-
-
-# @atexit.register
-# def close_clusters():
-#     print("AT EXIT")
-#     for cluster in list(SaturnCluster._instances):
-#         if not cluster.close_when_done:
-#             cluster.status = "closed"
-#         elif cluster.status != "closed":
-#             raise ValueError
-#             cluster.close(timeout=10)
 
 
 def _options():

@@ -34,22 +34,19 @@ class SaturnCluster(SpecCluster):
         asynchronous=False,
         **kwargs,
     ):
-        if len(self._instances) >= 1:
-            return [i for i in self._instances][0]
-        else:
-            self.n_workers = n_workers
-            self.worker_size = worker_size
-            self.scheduler_size = scheduler_size
-            self.nprocs = nprocs
-            self.nthreads = nthreads
-            self.scheduler_service_wait_timeout = scheduler_service_wait_timeout
-            self._loop_runner = LoopRunner(loop=loop, asynchronous=asynchronous)
-            self.loop = self._loop_runner.loop
-            self.periodic_callbacks = {}
-            self._lock = asyncio.Lock()
-            self._asynchronous = asynchronous
-            self._instances.add(self)
-            self._correct_state_waiting = None
+        self.n_workers = n_workers
+        self.worker_size = worker_size
+        self.scheduler_size = scheduler_size
+        self.nprocs = nprocs
+        self.nthreads = nthreads
+        self.scheduler_service_wait_timeout = scheduler_service_wait_timeout
+        self._loop_runner = LoopRunner(loop=loop, asynchronous=asynchronous)
+        self.loop = self._loop_runner.loop
+        self.periodic_callbacks = {}
+        self._lock = asyncio.Lock()
+        self._asynchronous = asynchronous
+        self._instances.add(self)
+        self._correct_state_waiting = None
         self.status = "created"
 
         if not self.asynchronous:

@@ -181,10 +181,9 @@ class SaturnCluster(SpecCluster):
         nthreads=None,
         scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
     ):
-        """Return a SaturnCluster
-
-        Destroy existing Dask cluster attached to the Jupyter Notebook or
-        Custom Deployment and recreate it with the given configuration.
+        """
+        Destroy existing Dask cluster attached to the Saturn resource
+        and recreate it with the given configuration.
         """
         print(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
@@ -217,8 +216,10 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     async def _close(self):
+        expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
+
         while self.status == _STATUS.CLOSING:
-            await asyncio.sleep(1)
+            await expBackoff.wait()
             self._refresh_status()
         if self.status in [_STATUS.STOPPED, _STATUS.CLOSED]:
             return

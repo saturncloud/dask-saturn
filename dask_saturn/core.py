@@ -18,6 +18,19 @@ HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
 
+class _STATUS:
+    """ Statuses can come from Saturn or from dask-kubernetes"""
+
+    CREATED = "created"
+    STARTING = "starting"
+    READY = "ready"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    CLOSING = "closing"
+    CLOSED = "closed"
+    ERROR = "error"
+
+
 class SaturnCluster(SpecCluster):
     cluster_url = None
     _scheduler_address = None
@@ -52,7 +65,7 @@ class SaturnCluster(SpecCluster):
         self._instances.add(self)
         self._correct_state_waiting = None
         self.close_when_done = close_when_done
-        self.status = "created"
+        self.status = _STATUS.CREATED
 
         if not self.asynchronous:
             self._loop_runner.start()
@@ -72,7 +85,7 @@ class SaturnCluster(SpecCluster):
             data = response.json()
             self.status = data["status"]
         else:
-            self.status = "closed"
+            self.status = _STATUS.CLOSED
 
     @property
     def _supports_scaling(self):
@@ -88,7 +101,7 @@ class SaturnCluster(SpecCluster):
 
     def __await__(self):
         async def _():
-            if self.status == "created":
+            if self.status == _STATUS.CREATED:
                 await self._start()
             return self
 
@@ -102,37 +115,37 @@ class SaturnCluster(SpecCluster):
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
             self._refresh_status()
-            if self.status in ["error", "closed", "stopped"]:
+            if self.status in [_STATUS.STOPPED, _STATUS.CLOSED, _STATUS.ERROR]:
                 for pc in self.periodic_callbacks.values():
                     pc.stop()
-            if self.status == "error":
+            if self.status == _STATUS.ERROR:
                 raise ValueError("Cluster is not running.")
             return {"workers": {}}
         return response.json()
 
     def __enter__(self):
-        self.status = "starting"
+        self.status = _STATUS.STARTING
         self.sync(self._start)
-        assert self.status in ["running", "ready"]
+        assert self.status in [_STATUS.RUNNING, _STATUS.READY]
         return self
 
     async def _start(self):
         """Start a cluster"""
         expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
 
-        while self.status == "starting":
+        while self.status == _STATUS.STARTING:
             print(f"Starting cluster. Status: {self.status}")
             await expBackoff.wait()
             if self.cluster_url is not None:
                 self._refresh_status()
 
-        if self.status in ["running", "ready"]:
+        if self.status in [_STATUS.RUNNING, _STATUS.READY]:
             print(f"Cluster is {self.status}")
             return
-        if self.status == "closed":
+        if self.status == _STATUS.CLOSED:
             raise ValueError("Cluster is closed")
 
-        self.status = "starting"
+        self.status = _STATUS.STARTING
         print(f"Starting cluster. Status: {self.status}")
 
         cluster_config = {
@@ -150,7 +163,7 @@ class SaturnCluster(SpecCluster):
         data = response.json()
 
         self.status = data["status"]
-        if self.status == "error":
+        if self.status == _STATUS.ERROR:
             raise ValueError(" ".join(data["errors"]))
 
         self.cluster_url = f"{url}/{data['id']}/"
@@ -204,12 +217,12 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     async def _close(self):
-        while self.status == "closing":
+        while self.status == _STATUS.CLOSING:
             await asyncio.sleep(1)
             self._refresh_status()
-        if self.status in ["stopped", "closed"]:
+        if self.status in [_STATUS.STOPPED, _STATUS.CLOSED]:
             return
-        self.status = "closing"
+        self.status = _STATUS.CLOSED
 
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=HEADERS)

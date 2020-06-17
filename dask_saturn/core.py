@@ -44,7 +44,7 @@ class SaturnCluster(SpecCluster):
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
-        self.autoclose = False
+        self.autoclose = autoclose
 
     @classmethod
     def reset(

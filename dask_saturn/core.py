@@ -46,7 +46,7 @@ class SaturnCluster(SpecCluster):
         nprocs=1,
         nthreads=1,
         scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
-        close_when_done=False,
+        autoclose=False,
         loop=None,
         asynchronous=False,
         **kwargs,
@@ -64,7 +64,7 @@ class SaturnCluster(SpecCluster):
         self._asynchronous = asynchronous
         self._instances.add(self)
         self._correct_state_waiting = None
-        self.close_when_done = close_when_done
+        self.autoclose = autoclose
         self.status = _STATUS.CREATED
 
         if not self.asynchronous:
@@ -237,12 +237,12 @@ class SaturnCluster(SpecCluster):
         return self.sync(self._close, callback_timeout=timeout)
 
     def __exit__(self, typ, value, traceback):
-        if self.close_when_done:
+        if self.autoclose:
             self.close()
             self._loop_runner.stop()
 
     async def __aexit__(self, typ, value, traceback):
-        if self.close_when_done:
+        if self.autoclose:
             await self.close()
 
 

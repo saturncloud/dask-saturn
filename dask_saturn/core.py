@@ -70,7 +70,6 @@ class SaturnCluster(SpecCluster):
         if not self.asynchronous:
             self._loop_runner.start()
             self.sync(self._start)
-            print(f"Starting cluster")
             expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
             while self.status in [_STATUS.CREATED, _STATUS.STARTING]:
                 expBackoff.wait(asynchronous=False)
@@ -140,11 +139,12 @@ class SaturnCluster(SpecCluster):
         expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
 
         while self.status == _STATUS.STARTING:
-            print(f"Starting cluster")
             await expBackoff.wait()
             if self.cluster_url is not None:
                 self._refresh_status()
                 print(f"Cluster is {self.status}")
+            else:
+                break
 
         if self.status in [_STATUS.RUNNING, _STATUS.READY]:
             print(f"Cluster is {self.status}")
@@ -152,7 +152,15 @@ class SaturnCluster(SpecCluster):
         if self.status == _STATUS.CLOSED:
             raise ValueError(f"Cluster is {self.status}")
 
+        while self.status == _STATUS.CLOSING:
+            expBackoff.wait(asynchronous=False)
+            if self.cluster_url is not None:
+                self._refresh_status()
+            else:
+                break
+
         self.status = _STATUS.STARTING
+        print(f"Starting cluster")
 
         cluster_config = {
             "n_workers": self.n_workers,

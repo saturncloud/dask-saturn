@@ -73,7 +73,7 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
-        return cls()
+        return cls(**cluster_config)
 
     @property
     def status(self):

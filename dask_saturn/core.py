@@ -72,7 +72,7 @@ class SaturnCluster(SpecCluster):
             self.sync(self._start)
 
             expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
-            while self.status == _STATUS.STARTING:
+            while self.status in [_STATUS.CREATED, _STATUS.STARTING]:
                 expBackoff.wait(asynchronous=False)
                 self._refresh_status()
                 print(f"Cluster is {self.status}")

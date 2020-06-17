@@ -3,6 +3,7 @@ import requests
 import json
 import asyncio
 import weakref
+import logging
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -10,6 +11,9 @@ from distributed.utils import LoopRunner
 from typing import List, Dict
 
 from .backoff import ExpBackoff
+
+
+logger = logging.getLogger(__name__)
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
@@ -25,8 +29,9 @@ class _STATUS:
     STARTING = "starting"
     READY = "ready"
     RUNNING = "running"
-    STOPPED = "stopped"
     CLOSING = "closing"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
     CLOSED = "closed"
     ERROR = "error"
 
@@ -74,7 +79,7 @@ class SaturnCluster(SpecCluster):
             while self.status in [_STATUS.CREATED, _STATUS.STARTING]:
                 expBackoff.wait(asynchronous=False)
                 self._refresh_status()
-                print(f"Cluster is {self.status}")
+                logger.info(f"Cluster is {self.status}")
 
     def _refresh_status(self):
         url = urljoin(self.cluster_url, "status")
@@ -142,17 +147,17 @@ class SaturnCluster(SpecCluster):
             await expBackoff.wait()
             if self.cluster_url is not None:
                 self._refresh_status()
-                print(f"Cluster is {self.status}")
+                logger.info(f"Cluster is {self.status}")
             else:
                 break
 
         if self.status in [_STATUS.RUNNING, _STATUS.READY]:
-            print(f"Cluster is {self.status}")
+            logger.info(f"Cluster is {self.status}")
             return
         if self.status == _STATUS.CLOSED:
             raise ValueError(f"Cluster is {self.status}")
 
-        while self.status == _STATUS.CLOSING:
+        while self.status in [_STATUS.CLOSING, _STATUS.STOPPING]:
             expBackoff.wait(asynchronous=False)
             if self.cluster_url is not None:
                 self._refresh_status()
@@ -160,7 +165,7 @@ class SaturnCluster(SpecCluster):
                 break
 
         self.status = _STATUS.STARTING
-        print(f"Starting cluster")
+        logger.info(f"Starting cluster")
 
         cluster_config = {
             "n_workers": self.n_workers,
@@ -199,7 +204,7 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Saturn resource
         and recreate it with the given configuration.
         """
-        print(f"Resetting cluster.")
+        logger.info(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
@@ -238,7 +243,7 @@ class SaturnCluster(SpecCluster):
     async def _close(self):
         expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
 
-        while self.status == _STATUS.CLOSING:
+        while self.status in [_STATUS.CLOSING, _STATUS.STOPPING]:
             await expBackoff.wait()
             self._refresh_status()
         if self.status in [_STATUS.STOPPED, _STATUS.CLOSED]:

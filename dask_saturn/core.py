@@ -3,7 +3,6 @@ import requests
 import json
 import asyncio
 import weakref
-import logging
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -11,9 +10,6 @@ from distributed.utils import LoopRunner
 from typing import List, Dict
 
 from .backoff import ExpBackoff
-
-
-logger = logging.getLogger(__name__)
 
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
@@ -79,7 +75,7 @@ class SaturnCluster(SpecCluster):
             while self.status in [_STATUS.CREATED, _STATUS.STARTING]:
                 expBackoff.wait(asynchronous=False)
                 self._refresh_status()
-                logger.info(f"Cluster is {self.status}")
+                print(f"Cluster is {self.status}")
 
     def _refresh_status(self):
         url = urljoin(self.cluster_url, "status")
@@ -147,12 +143,12 @@ class SaturnCluster(SpecCluster):
             await expBackoff.wait()
             if self.cluster_url is not None:
                 self._refresh_status()
-                logger.info(f"Cluster is {self.status}")
+                print(f"Cluster is {self.status}")
             else:
                 break
 
         if self.status in [_STATUS.RUNNING, _STATUS.READY]:
-            logger.info(f"Cluster is {self.status}")
+            print(f"Cluster is {self.status}")
             return
         if self.status == _STATUS.CLOSED:
             raise ValueError(f"Cluster is {self.status}")
@@ -161,11 +157,12 @@ class SaturnCluster(SpecCluster):
             expBackoff.wait(asynchronous=False)
             if self.cluster_url is not None:
                 self._refresh_status()
+                print(f"Cluster is {self.status}")
             else:
                 break
 
         self.status = _STATUS.STARTING
-        logger.info(f"Starting cluster")
+        print(f"Starting cluster")
 
         cluster_config = {
             "n_workers": self.n_workers,
@@ -204,7 +201,7 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Saturn resource
         and recreate it with the given configuration.
         """
-        logger.info(f"Resetting cluster.")
+        print(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,

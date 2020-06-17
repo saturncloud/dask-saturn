@@ -25,6 +25,7 @@ class SaturnCluster(SpecCluster):
         nprocs=None,
         nthreads=None,
         scheduler_service_wait_timeout=DEFAULT_WAIT_TIMEOUT_SECONDS,
+        autoclose=False,
         **kwargs,
     ):
         if cluster_url is None:
@@ -43,6 +44,7 @@ class SaturnCluster(SpecCluster):
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks = {}
+        self.autoclose = False
 
     @classmethod
     def reset(
@@ -184,6 +186,18 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
             pc.stop()
+
+    @property
+    def asynchronous():
+        return False
+
+    def __enter__(self):
+        assert self.status == "running"
+        return self
+
+    def __exit__(self, typ, value, traceback):
+        if self.autoclose:
+            return self.close()
 
 
 def _options():

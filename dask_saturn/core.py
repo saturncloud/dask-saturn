@@ -71,6 +71,12 @@ class SaturnCluster(SpecCluster):
             self._loop_runner.start()
             self.sync(self._start)
 
+            expBackoff = ExpBackoff(wait_timeout=self.scheduler_service_wait_timeout)
+            while self.status == _STATUS.STARTING:
+                expBackoff.wait(asynchronous=False)
+                self._refresh_status()
+                print(f"Cluster is {self.status}")
+
     def _refresh_status(self):
         url = urljoin(self.cluster_url, "status")
         response = requests.get(url, headers=HEADERS)
@@ -201,6 +207,9 @@ class SaturnCluster(SpecCluster):
 
     def scale(self, n):
         """Scale cluster to have ``n`` workers"""
+        self._refresh_status()
+        assert self.status == _STATUS.RUNNING
+
         url = urljoin(self.cluster_url, "scale")
         response = requests.post(url, json.dumps({"n": n}), headers=HEADERS)
         if not response.ok:
@@ -208,6 +217,9 @@ class SaturnCluster(SpecCluster):
 
     def adapt(self, minimum, maximum):
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
+        self._refresh_status()
+        assert self.status == _STATUS.RUNNING
+
         url = urljoin(self.cluster_url, "adapt")
         response = requests.post(
             url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=HEADERS
@@ -223,7 +235,7 @@ class SaturnCluster(SpecCluster):
             self._refresh_status()
         if self.status in [_STATUS.STOPPED, _STATUS.CLOSED]:
             return
-        self.status = _STATUS.CLOSED
+        self.status = _STATUS.CLOSING
 
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=HEADERS)

@@ -141,6 +141,10 @@ class SaturnCluster(SpecCluster):
             if not response.ok:
                 raise ValueError(response.reason)
             data = response.json()
+            warnings = data.get("warnings")
+            if warnings is not None:
+                for warning in warnings:
+                    print(f"WARNING: {warning}")
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":

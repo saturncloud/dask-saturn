@@ -1,6 +1,7 @@
 import os
 import requests
 import json
+import warnings
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -9,7 +10,13 @@ from typing import List, Dict
 from .backoff import ExpBackoff
 
 SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
+if SATURN_TOKEN == "":
+    warnings.warn("Environment variable SATURN_TOKEN not set", RuntimeWarning)
+
 BASE_URL = os.environ.get("BASE_URL", "")
+if BASE_URL == "":
+    warnings.warn("Environment variable BASE_URL not set", RuntimeWarning)
+
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 

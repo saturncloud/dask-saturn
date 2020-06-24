@@ -1,6 +1,7 @@
 import os
 import requests
 import json
+import logging
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -13,6 +14,10 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: " "%(message)s"
+)
+log = logging.getLogger('dask-saturn')
 
 class SaturnCluster(SpecCluster):
     def __init__(
@@ -61,7 +66,7 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Jupyter Notebook or
         Custom Deployment and recreate it with the given configuration.
         """
-        print(f"Resetting cluster.")
+        log.info(f"Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
@@ -144,15 +149,15 @@ class SaturnCluster(SpecCluster):
             warnings = data.get("warnings")
             if warnings is not None:
                 for warning in warnings:
-                    print(f"WARNING: {warning}")
+                    log.warning(warning)
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":
                 self.cluster_url = f"{url}/{data['id']}/"
-                print("Cluster is ready")
+                log.info("Cluster is ready")
                 break
             else:
-                print(f"Starting cluster. Status: {data['status']}")
+                log.info(f"Starting cluster. Status: {data['status']}")
 
             if self.cluster_url is None:
                 if not expBackoff.wait():

@@ -15,11 +15,14 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
+logfmt = "[%(asctime)s] %(levelname)s - %(name)s | %(message)s"
+datefmt = "%Y-%m-%d %H:%M:%S"
+
 log = logging.getLogger('dask-saturn')
 log.setLevel(logging.INFO)
-handler = logging.StreamHandler(stdout)
+handler = logging.StreamHandler(stream=stdout)
 handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(name)s | %(message)s"))
+handler.setFormatter(logging.Formatter(logfmt, datefmt))
 log.addHandler(handler)
 
 

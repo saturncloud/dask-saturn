@@ -8,8 +8,22 @@ from typing import List, Dict
 
 from .backoff import ExpBackoff
 
-SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
-BASE_URL = os.environ.get("BASE_URL", "")
+try:
+    SATURN_TOKEN = os.environ["SATURN_TOKEN"]
+except KeyError:
+    raise RuntimeError(
+        "Required environment variable SATURN_TOKEN not set. "
+        "dask-saturn code should only be run on Saturn Cloud infrastructure."
+    )
+
+try:
+    BASE_URL = os.environ["BASE_URL"]
+except KeyError:
+    raise RuntimeError(
+        "Required environment variable BASE_URL not set. "
+        "dask-saturn code should only be run on Saturn Cloud infrastructure."
+    )
+
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 

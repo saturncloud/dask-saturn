@@ -75,7 +75,7 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Jupyter Notebook or
         Custom Deployment and recreate it with the given configuration.
         """
-        print(f"Resetting cluster.")
+        print("Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,

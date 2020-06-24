@@ -1,10 +1,12 @@
 import os
 import requests
 import json
+import logging
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from typing import List, Dict
+from sys import stdout
 
 from .backoff import ExpBackoff
 
@@ -26,6 +28,16 @@ except KeyError:
 
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
+
+logfmt = "[%(asctime)s] %(levelname)s - %(name)s | %(message)s"
+datefmt = "%Y-%m-%d %H:%M:%S"
+
+log = logging.getLogger('dask-saturn')
+log.setLevel(logging.INFO)
+handler = logging.StreamHandler(stream=stdout)
+handler.setLevel(logging.INFO)
+handler.setFormatter(logging.Formatter(logfmt, datefmt))
+log.addHandler(handler)
 
 
 class SaturnCluster(SpecCluster):
@@ -75,7 +87,7 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Jupyter Notebook or
         Custom Deployment and recreate it with the given configuration.
         """
-        print("Resetting cluster.")
+        log.info("Resetting cluster.")
         url = urljoin(BASE_URL, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
@@ -155,14 +167,18 @@ class SaturnCluster(SpecCluster):
             if not response.ok:
                 raise ValueError(response.reason)
             data = response.json()
+            warnings = data.get("warnings")
+            if warnings is not None:
+                for warning in warnings:
+                    log.warning(warning)
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":
                 self.cluster_url = f"{url}/{data['id']}/"
-                print("Cluster is ready")
+                log.info("Cluster is ready")
                 break
             else:
-                print(f"Starting cluster. Status: {data['status']}")
+                log.info(f"Starting cluster. Status: {data['status']}")
 
             if self.cluster_url is None:
                 if not expBackoff.wait():

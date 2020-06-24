@@ -1,7 +1,6 @@
 import os
 import requests
 import json
-import warnings
 
 from urllib.parse import urljoin
 from distributed import SpecCluster
@@ -9,13 +8,21 @@ from typing import List, Dict
 
 from .backoff import ExpBackoff
 
-SATURN_TOKEN = os.environ.get("SATURN_TOKEN", "")
-if SATURN_TOKEN == "":
-    warnings.warn("Environment variable SATURN_TOKEN not set", RuntimeWarning)
+try:
+    SATURN_TOKEN = os.environ["SATURN_TOKEN"]
+except KeyError:
+    raise RuntimeError(
+        "Required environment variable SATURN_TOKEN not set. "
+        "dask-saturn code should only be run on Saturn Cloud infrastructure."
+    )
 
-BASE_URL = os.environ.get("BASE_URL", "")
-if BASE_URL == "":
-    warnings.warn("Environment variable BASE_URL not set", RuntimeWarning)
+try:
+    BASE_URL = os.environ["BASE_URL"]
+except KeyError:
+    raise RuntimeError(
+        "Required environment variable BASE_URL not set. "
+        "dask-saturn code should only be run on Saturn Cloud infrastructure."
+    )
 
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200

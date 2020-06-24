@@ -30,7 +30,7 @@ jobs:
         bdist_wheel
     - name: Publish distribution to PyPI
       if: startsWith(github.event.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@v1.3.0
       with:
         # Password is set in GitHub UI to an API secret for pypi
         user: __token__

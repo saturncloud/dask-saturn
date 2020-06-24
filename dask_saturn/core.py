@@ -14,10 +14,13 @@ BASE_URL = os.environ.get("BASE_URL", "")
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: " "%(message)s"
-)
 log = logging.getLogger('dask-saturn')
+log.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(name)s | %(message)s"))
+log.addHandler(handler)
+
 
 class SaturnCluster(SpecCluster):
     def __init__(

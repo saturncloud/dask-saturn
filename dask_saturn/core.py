@@ -6,6 +6,7 @@ import logging
 from urllib.parse import urljoin
 from distributed import SpecCluster
 from typing import List, Dict
+from sys import stdout
 
 from .backoff import ExpBackoff
 
@@ -16,7 +17,7 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
 log = logging.getLogger('dask-saturn')
 log.setLevel(logging.INFO)
-handler = logging.StreamHandler()
+handler = logging.StreamHandler(stdout)
 handler.setLevel(logging.INFO)
 handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s - %(name)s | %(message)s"))
 log.addHandler(handler)

@@ -3,6 +3,7 @@ from datetime import datetime
 from math import ceil
 from random import randrange
 
+
 class ExpBackoff:
     def __init__(self, wait_timeout=1200, min_sleep=5, max_sleep=60):
         """
@@ -19,7 +20,7 @@ class ExpBackoff:
         self.max_sleep = max_sleep
         self.min_sleep = min_sleep
         self.retries = 0
-    
+
     def wait(self):
         if self.retries == 0:
             self.start_time = datetime.now()

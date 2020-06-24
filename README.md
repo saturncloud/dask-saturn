@@ -8,9 +8,7 @@ to interact with clusters created within
 [Saturn Cloud](https://www.saturncloud.io/).
 
 ## Start cluster
-In order to interact with a Dask cluster, the cluster must first be created in
-the Saturn User Interface. Then, from within a Jupyter notebook, you can start
-the cluster and adjust the number of workers.
+From within a Jupyter notebook, you can start a cluster:
 
 ```python
 from dask_saturn import SaturnCluster
@@ -18,6 +16,15 @@ from dask_saturn import SaturnCluster
 cluster = SaturnCluster()
 cluster
 ```
+
+By default this will start a dask cluster with the same settings that you have
+already set in the Saturn UI or in a prior notebook.
+
+To start the cluster with a certain number of workers using the `n_workers`
+option. Similarly, you can set the `scheduler_size`, and `worker_size`.
+
+> Note: If the cluster is already running then you can't change the settings.
+> Attempting to do so will raise a warning.
 
 ## Adjust number of workers
 Once you have a cluster you can interact with it via the jupyter
@@ -53,6 +60,20 @@ To terminate all resources associated with a cluster, use the
 
 ```python
 cluster.close()
+```
+
+## Change settings
+
+To update the settings (such as `n_workers`, `worker_size`, `nthreads`) on an existing cluster, use the `reset` method:
+
+```python
+cluster.reset(n_workers=3)
+```
+
+You can also call this without instantiating the cluster first:
+
+```python
+cluster = SaturnCluster.reset(n_workers=3)
 ```
 
 ## Development

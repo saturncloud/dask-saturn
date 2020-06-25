@@ -25,12 +25,6 @@ requirements:
     - python
     - requests
 
-test:
-  imports:
-    - dask_saturn
-  requires:
-    - pytest
-
 about:
   home: "https://saturncloud.io/"
   license: BSD-3-Clause

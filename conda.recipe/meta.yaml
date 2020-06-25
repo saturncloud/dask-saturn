@@ -1,5 +1,5 @@
 {% set name = "dask-saturn" %}
-{% set version = "0.0.3" %}
+{% set version = "0.0.4" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: 78af7153a8690ca8761cb092fd01fa95dd48e8b92f8debc6e2817b7fb80578dc
+  sha256: a9f56f3f36f8f1b13f1ff42628717bcc6295f8a131a0293b211829c58e822769
 
 build:
   noarch: python
@@ -24,12 +24,6 @@ requirements:
     - distributed
     - python
     - requests
-
-test:
-  imports:
-    - dask_saturn
-  requires:
-    - pytest
 
 about:
   home: "https://saturncloud.io/"

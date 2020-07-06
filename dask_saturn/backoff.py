@@ -5,7 +5,7 @@ from random import randrange
 
 
 class ExpBackoff:
-    def __init__(self, wait_timeout=1200, min_sleep=5, max_sleep=60):
+    def __init__(self, wait_timeout: int = 1200, min_sleep: int = 5, max_sleep: int = 60):
         """
         Used to generate sleep times with a capped exponential backoff.
         Jitter reduces contention on the event of multiple clients making
@@ -21,7 +21,7 @@ class ExpBackoff:
         self.min_sleep = min_sleep
         self.retries = 0
 
-    def wait(self):
+    def wait(self) -> bool:
         if self.retries == 0:
             self.start_time = datetime.now()
 

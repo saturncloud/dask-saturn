@@ -60,7 +60,7 @@ class SaturnCluster(SpecCluster):
         in your Saturn Cloud project.
     :param nprocs: The number of ``dask-worker`` processes run on each host in a distributed
         cluster.
-    :param nthreads: The number of vCPUs allocated to each ``dask-worker`` process.
+    :param nthreads: The number of threads available to each ``dask-worker`` process.
     :param scheduler_service_wait_timeout: The maximum amout of time, in seconds, that
         ``SaturnCluster`` will wait for the scheduler to respond before deciding
         that the scheduler is taking too long. By default, this is set to 1200 (20

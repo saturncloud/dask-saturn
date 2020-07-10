@@ -212,9 +212,9 @@ class SaturnCluster(SpecCluster):
                     log.warning(warning)
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
-            elif data["status"] == "ready":
+            elif data["status"] == "running":
                 self.cluster_url = f"{url}/{data['id']}/"
-                log.info("Cluster is ready")
+                log.info("Cluster is running")
                 break
             else:
                 log.info(f"Starting cluster. Status: {data['status']}")

@@ -201,6 +201,7 @@ class SaturnCluster(SpecCluster):
         }
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
+        logged_warnings = {}
         while self.cluster_url is None:
             response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
             if not response.ok:
@@ -209,7 +210,9 @@ class SaturnCluster(SpecCluster):
             warnings = data.get("warnings")
             if warnings is not None:
                 for warning in warnings:
-                    log.warning(warning)
+                    if not logged_warnings.get(warning):
+                        logged_warnings[warning] = True
+                        log.warning(warning)
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":

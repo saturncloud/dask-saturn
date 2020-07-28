@@ -54,7 +54,7 @@ class SaturnCluster(SpecCluster):
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter
         in your Saturn Cloud project.
-    :param worker_size: A string with the size to use for the scheduler. A list of
+    :param scheduler_size: A string with the size to use for the scheduler. A list of
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter
         in your Saturn Cloud project.

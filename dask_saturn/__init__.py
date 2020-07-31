@@ -1,6 +1,5 @@
 from .core import SaturnCluster
-from .core import describe_sizes
-from .core import list_sizes
+from .core import describe_sizes, list_sizes
 
 from ._version import get_versions
 

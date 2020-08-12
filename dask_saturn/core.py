@@ -54,6 +54,8 @@ class SaturnCluster(SpecCluster):
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter
         in your Saturn Cloud project.
+    :param worker_is_spot: Flag to indicate if workers should be started on Spot Instances nodes.
+        Defaults to False.
     :param scheduler_size: A string with the size to use for the scheduler. A list of
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter
@@ -78,6 +80,7 @@ class SaturnCluster(SpecCluster):
         n_workers: Optional[int] = None,
         cluster_url: Optional[str] = None,
         worker_size: Optional[str] = None,
+        worker_is_spot: Optional[bool] = False,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -89,6 +92,7 @@ class SaturnCluster(SpecCluster):
             self._start(
                 n_workers=n_workers,
                 worker_size=worker_size,
+                worker_is_spot=worker_is_spot,
                 scheduler_size=scheduler_size,
                 nprocs=nprocs,
                 nthreads=nthreads,
@@ -108,6 +112,7 @@ class SaturnCluster(SpecCluster):
         cls,
         n_workers: Optional[int] = None,
         worker_size: Optional[str] = None,
+        worker_is_spot: Optional[bool] = False,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -126,6 +131,7 @@ class SaturnCluster(SpecCluster):
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
+            "worker_is_spot": worker_is_spot,
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,
@@ -178,6 +184,7 @@ class SaturnCluster(SpecCluster):
         self,
         n_workers: Optional[int] = None,
         worker_size: Optional[str] = None,
+        worker_is_spot: Optional[bool] = False,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -195,6 +202,7 @@ class SaturnCluster(SpecCluster):
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
+            "worker_is_spot": worker_is_spot,
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,

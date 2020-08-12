@@ -21,7 +21,7 @@ By default this will start a dask cluster with the same settings that you have
 already set in the Saturn UI or in a prior notebook.
 
 To start the cluster with a certain number of workers using the `n_workers`
-option. Similarly, you can set the `scheduler_size`, and `worker_size`.
+option. Similarly, you can set the `scheduler_size`, `worker_size`, and `worker_is_spot`.
 
 > Note: If the cluster is already running then you can't change the settings.
 > Attempting to do so will raise a warning.
@@ -64,7 +64,7 @@ cluster.close()
 
 ## Change settings
 
-To update the settings (such as `n_workers`, `worker_size`, `nthreads`) on an existing cluster, use the `reset` method:
+To update the settings (such as `n_workers`, `worker_size`, `worker_is_spot`, `nthreads`) on an existing cluster, use the `reset` method:
 
 ```python
 cluster.reset(n_workers=3)

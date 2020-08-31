@@ -22,7 +22,6 @@ jobs:
       matrix:
         include:
           - task: linting
-          - task: unit-tests
     steps:
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -37,9 +36,3 @@ jobs:
         run: |
           pip install --upgrade black flake8 mypy pylint
           make lint
-      - name: unit-tests
-        if: matrix.task == 'unit-tests'
-        shell: bash
-        run: |
-          pip install --upgrade cloudpickle pytest pytest-cov responses
-          make unit-tests

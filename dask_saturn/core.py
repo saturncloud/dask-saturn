@@ -101,7 +101,7 @@ class SaturnCluster(SpecCluster):
         **kwargs,
     ):
         if cluster_url is None:
-            self._start(
+            await self._start(
                 n_workers=n_workers,
                 worker_size=worker_size,
                 worker_is_spot=worker_is_spot,

@@ -100,6 +100,7 @@ class SaturnCluster(SpecCluster):
         autoclose: bool = False,
         **kwargs,
     ):
+        super().__init__(*args, **kwargs)
         if cluster_url is None:
             self._start(
                 n_workers=n_workers,
@@ -118,8 +119,6 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
-
-        super().__init__(*args, **kwargs)
 
     @classmethod
     def reset(
@@ -166,6 +165,18 @@ class SaturnCluster(SpecCluster):
         if not response.ok:
             return self._get_pod_status()
         return response.json()["status"]
+
+    @status.setter
+    def status(self, value) -> None:
+        """
+        Setter to make super-initialization happy when
+        it tries to initialize status.
+
+        This value is ignored. Every time you access ``.status``,
+        it will get the relevant information by hitting
+        the ``/status`` endpoint.
+        """
+        pass
 
     def _get_pod_status(self) -> Optional[str]:
         """
@@ -226,7 +237,7 @@ class SaturnCluster(SpecCluster):
         it will get the relevant information by hitting
         the ``/scheduler_info`` endpoint.
         """
-        self._scheduler_info = value
+        pass
 
     # pylint: disable=invalid-overridden-method
     def _start(

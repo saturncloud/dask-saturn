@@ -86,6 +86,7 @@ class SaturnCluster(SpecCluster):
         closes the cluster when it exits.
     """
 
+    # pylint: disable=unused-argument,super-init-not-called
     def __init__(
         self,
         *args,
@@ -100,7 +101,6 @@ class SaturnCluster(SpecCluster):
         autoclose: bool = False,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
         if cluster_url is None:
             self._start(
                 n_workers=n_workers,
@@ -166,18 +166,6 @@ class SaturnCluster(SpecCluster):
             return self._get_pod_status()
         return response.json()["status"]
 
-    @status.setter
-    def status(self, value) -> None:
-        """
-        Setter to make super-initialization happy when
-        it tries to initialize status.
-
-        This value is ignored. Every time you access ``.status``,
-        it will get the relevant information by hitting
-        the ``/status`` endpoint.
-        """
-        pass
-
     def _get_pod_status(self) -> Optional[str]:
         """
         Status of the KubeCluster pod.
@@ -226,18 +214,6 @@ class SaturnCluster(SpecCluster):
                 raise ValueError("Cluster is not running.")
             raise ValueError(response.reason)
         return response.json()
-
-    @scheduler_info.setter
-    def scheduler_info(self, value) -> None:
-        """
-        Setter to make super-initialization happy when
-        it tries to initialize scheduler_info.
-
-        This value is ignored. Every time you access ``.scheduler_info``,
-        it will get the relevant information by hitting
-        the ``/scheduler_info`` endpoint.
-        """
-        pass
 
     # pylint: disable=invalid-overridden-method
     def _start(

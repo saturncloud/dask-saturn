@@ -101,7 +101,7 @@ class SaturnCluster(SpecCluster):
         **kwargs,
     ):
         if cluster_url is None:
-            await self._start(
+            self._start(
                 n_workers=n_workers,
                 worker_size=worker_size,
                 worker_is_spot=worker_is_spot,
@@ -216,7 +216,8 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
-    async def _start(
+    # pylint: disable=invalid-overridden-method
+    def _start(
         self,
         n_workers: Optional[int] = None,
         worker_size: Optional[str] = None,
@@ -315,8 +316,13 @@ class SaturnCluster(SpecCluster):
         """
         Whether or not the cluster's ``_start`` method
         is synchronous.
+
+        ``SaturnCluster`` uses a synchronous ``_start()``
+        because it has to be called in the class
+        constructor, which is intended to be used interactively
+        in a notebook.
         """
-        return True
+        return False
 
     def __enter__(self) -> "SaturnCluster":
         """

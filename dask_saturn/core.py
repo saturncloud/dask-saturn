@@ -300,6 +300,9 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     def close(self) -> None:
+        """
+        Defines what should be done when closing the cluster.
+        """
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=HEADERS)
         if not response.ok:
@@ -309,13 +312,34 @@ class SaturnCluster(SpecCluster):
 
     @property
     def asynchronous(self) -> bool:
-        return False
+        """
+        Whether or not the cluster's ``_start`` method
+        is synchronous.
+        """
+        return True
 
     def __enter__(self) -> "SaturnCluster":
+        """
+        magic method used to allow the use of ``SaturnCluster``
+        with a context manager.
+
+        .. code-block:: python
+
+            with SaturnCluster() as cluster:
+        """
         assert self.status == "running"
         return self
 
     def __exit__(self, typ, value, traceback) -> None:
+        """
+        magic method thate defines what should be done
+        when exiting a context manager's context. in other words
+        at the end of this
+
+        .. code-block:: python
+
+            with SaturnCluster() as cluster:
+        """
         if self.autoclose:
             self.close()
 

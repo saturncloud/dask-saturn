@@ -216,6 +216,18 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
+    @scheduler_info.setter
+    def scheduler_info(self, value) -> None:
+        """
+        Setter to make super-initialization happy when
+        it tries to initialize scheduler_info.
+
+        This value is ignored. Every time you access ``.scheduler_info``,
+        it will get the relevant information by hitting
+        the ``/scheduler_info`` endpoint.
+        """
+        self._scheduler_info = value
+
     # pylint: disable=invalid-overridden-method
     def _start(
         self,

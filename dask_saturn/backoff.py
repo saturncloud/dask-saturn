@@ -1,3 +1,9 @@
+"""
+Lightweight implementation of exponential backoff,
+used for operations that require polling. This is simple enough
+that it isn't worth bringing in a new dependency for it.
+"""
+
 from time import sleep
 from datetime import datetime
 from math import ceil
@@ -5,6 +11,15 @@ from random import randrange
 
 
 class ExpBackoff:
+    """
+    ``SaturnCluster._start()`` requires polling until the
+    Dask scheduled comes up. Exponential backoff is better
+    in these situations than fixed-wait-time polling, because
+    it minimizes the number of requests that need to be
+    made from the beginning of polling to the time the
+    scheduler is up.
+    """
+
     def __init__(self, wait_timeout: int = 1200, min_sleep: int = 5, max_sleep: int = 60):
         """
         Used to generate sleep times with a capped exponential backoff.
@@ -20,8 +35,18 @@ class ExpBackoff:
         self.max_sleep = max_sleep
         self.min_sleep = min_sleep
         self.retries = 0
+        self.start_time = None
 
     def wait(self) -> bool:
+        """
+        This methods returns ``False`` if the timeout has been
+        exceeded and code that is using ``ExpBackoff`` for polling
+        should just consider the polling failed.
+
+        If there there is still time left until
+        ``self.wait_timeout``, waits for some time and then
+        returns ``True``.
+        """
         if self.retries == 0:
             self.start_time = datetime.now()
 

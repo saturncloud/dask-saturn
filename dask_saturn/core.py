@@ -1,30 +1,41 @@
+"""
+Saturn-specific override of ``dask.distributed.deploy.SpecCluster``
+
+See https://distributed.dask.org/en/latest/_modules/distributed/deploy/spec.html
+for details on the parent class.
+"""
+
 import os
-import requests
 import json
 import logging
 
-from urllib.parse import urljoin
-from distributed import SpecCluster
-from typing import Any, Dict, List, Optional
 from sys import stdout
+from typing import Any, Dict, List, Optional
+from urllib.parse import urljoin
+
+import requests
+
+from distributed import SpecCluster
+from tornado.ioloop import PeriodicCallback
+
 
 from .backoff import ExpBackoff
 
 try:
     SATURN_TOKEN = os.environ["SATURN_TOKEN"]
-except KeyError:
+except KeyError as err:
     raise RuntimeError(
         "Required environment variable SATURN_TOKEN not set. "
         "dask-saturn code should only be run on Saturn Cloud infrastructure."
-    )
+    ) from err
 
 try:
     BASE_URL = os.environ["BASE_URL"]
-except KeyError:
+except KeyError as err:
     raise RuntimeError(
         "Required environment variable BASE_URL not set. "
         "dask-saturn code should only be run on Saturn Cloud infrastructure."
-    )
+    ) from err
 
 HEADERS = {"Authorization": f"token {SATURN_TOKEN}"}
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
@@ -32,7 +43,7 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 logfmt = "[%(asctime)s] %(levelname)s - %(name)s | %(message)s"
 datefmt = "%Y-%m-%d %H:%M:%S"
 
-log = logging.getLogger('dask-saturn')
+log = logging.getLogger("dask-saturn")
 log.setLevel(logging.INFO)
 handler = logging.StreamHandler(stream=stdout)
 handler.setLevel(logging.INFO)
@@ -74,6 +85,8 @@ class SaturnCluster(SpecCluster):
         this parameter to ``True`` if you want to use it in a context manager which
         closes the cluster when it exits.
     """
+
+    # pylint: disable=unused-argument,super-init-not-called
     def __init__(
         self,
         *args,
@@ -104,7 +117,7 @@ class SaturnCluster(SpecCluster):
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
-        self.periodic_callbacks = {}
+        self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
 
     @classmethod
@@ -116,7 +129,6 @@ class SaturnCluster(SpecCluster):
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
-        scheduler_service_wait_timeout: Optional[int] = DEFAULT_WAIT_TIMEOUT_SECONDS,
     ) -> "SaturnCluster":
         """Return a SaturnCluster
 
@@ -142,7 +154,10 @@ class SaturnCluster(SpecCluster):
         return cls(**cluster_config)
 
     @property
-    def status(self) -> str:
+    def status(self) -> Optional[str]:
+        """
+        Status of the cluster
+        """
         if self.cluster_url is None:
             return "closed"
         url = urljoin(self.cluster_url, "status")
@@ -152,24 +167,44 @@ class SaturnCluster(SpecCluster):
         return response.json()["status"]
 
     def _get_pod_status(self) -> Optional[str]:
+        """
+        Status of the KubeCluster pod.
+        """
         response = requests.get(self.cluster_url[:-1], headers=HEADERS)
         if response.ok:
             return response.json()["status"]
+        else:
+            return None
 
     @property
     def _supports_scaling(self) -> bool:
+        """
+        Property required by ``SpecCluster``, which describes
+        whether the cluster can be scaled after it's created.
+        """
         return True
 
     @property
     def scheduler_address(self) -> str:
+        """
+        Address for the Dask schduler.
+        """
         return self._scheduler_address
 
     @property
     def dashboard_link(self) -> str:
+        """
+        Link to the Dask dashboard. This is customized
+        to be inside of a Saturn project.
+        """
         return self._dashboard_link
 
     @property
     def scheduler_info(self) -> Dict[str, Any]:
+        """
+        Information about the scheduler. Raises a
+        ValueError if the scheduler is in a bad state.
+        """
         url = urljoin(self.cluster_url, "scheduler_info")
         response = requests.get(url, headers=HEADERS)
         if not response.ok:
@@ -180,6 +215,7 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
         return response.json()
 
+    # pylint: disable=invalid-overridden-method
     def _start(
         self,
         n_workers: Optional[int] = None,
@@ -197,7 +233,7 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         url = urljoin(BASE_URL, "api/dask_clusters")
-        self.cluster_url = None
+        self.cluster_url: Optional[str] = None
 
         cluster_config = {
             "n_workers": n_workers,
@@ -209,7 +245,7 @@ class SaturnCluster(SpecCluster):
         }
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
-        logged_warnings = {}
+        logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
             response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
             if not response.ok:
@@ -264,6 +300,9 @@ class SaturnCluster(SpecCluster):
             raise ValueError(response.reason)
 
     def close(self) -> None:
+        """
+        Defines what should be done when closing the cluster.
+        """
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=HEADERS)
         if not response.ok:
@@ -272,16 +311,42 @@ class SaturnCluster(SpecCluster):
             pc.stop()
 
     @property
-    def asynchronous() -> bool:
+    def asynchronous(self) -> bool:
+        """
+        Whether or not the cluster's ``_start`` method
+        is synchronous.
+
+        ``SaturnCluster`` uses a synchronous ``_start()``
+        because it has to be called in the class
+        constructor, which is intended to be used interactively
+        in a notebook.
+        """
         return False
 
     def __enter__(self) -> "SaturnCluster":
+        """
+        magic method used to allow the use of ``SaturnCluster``
+        with a context manager.
+
+        .. code-block:: python
+
+            with SaturnCluster() as cluster:
+        """
         assert self.status == "running"
         return self
 
-    def __exit__(self, typ, value, traceback):
+    def __exit__(self, typ, value, traceback) -> None:
+        """
+        magic method thate defines what should be done
+        when exiting a context manager's context. in other words
+        at the end of this
+
+        .. code-block:: python
+
+            with SaturnCluster() as cluster:
+        """
         if self.autoclose:
-            return self.close()
+            self.close()
 
 
 def _options() -> Dict[str, Any]:

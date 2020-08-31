@@ -34,5 +34,5 @@ jobs:
         if: matrix.task == 'linting'
         shell: bash
         run: |
-          pip install --upgrade black flake8 mypy pylint
+          pip install --upgrade black flake8 pylint
           make lint

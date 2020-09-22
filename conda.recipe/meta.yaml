@@ -16,12 +16,12 @@ build:
 
 requirements:
   host:
-    - distributed
+    - distributed ==2.20.0
     - pip
     - python
     - requests
   run:
-    - distributed
+    - distributed ==2.20.0
     - python
     - requests
 

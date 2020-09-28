@@ -56,8 +56,7 @@ class SaturnCluster(SpecCluster):
     Create a ``SaturnCluster``, an extension of ``distributed.SpecCluster``
     specific to Saturn Cloud.
 
-    :param n_workers: Number of workers to provision for the cluster. By default,
-        the cluster will start with 0 workers.
+    :param n_workers: Number of workers to provision for the cluster.
     :param cluster_url: URL for the "cluster" service running in kubernetes. This
         component of a ``Dask`` cluster in kubernetes knows how to create pods
         for workers and the scheduler.
@@ -66,7 +65,7 @@ class SaturnCluster(SpecCluster):
         If no size is provided, this will default to the size configured for Jupyter
         in your Saturn Cloud project.
     :param worker_is_spot: Flag to indicate if workers should be started on Spot Instances nodes.
-        Defaults to False.
+        Added in dask-saturn 0.1.0.
     :param scheduler_size: A string with the size to use for the scheduler. A list of
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter
@@ -93,7 +92,7 @@ class SaturnCluster(SpecCluster):
         n_workers: Optional[int] = None,
         cluster_url: Optional[str] = None,
         worker_size: Optional[str] = None,
-        worker_is_spot: Optional[bool] = False,
+        worker_is_spot: Optional[bool] = None,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -125,7 +124,7 @@ class SaturnCluster(SpecCluster):
         cls,
         n_workers: Optional[int] = None,
         worker_size: Optional[str] = None,
-        worker_is_spot: Optional[bool] = False,
+        worker_is_spot: Optional[bool] = None,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -148,6 +147,9 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+        # only send kwargs that are explicity set by user
+        cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
+
         response = requests.post(url, data=json.dumps(cluster_config), headers=HEADERS)
         if not response.ok:
             raise ValueError(response.reason)
@@ -220,7 +222,7 @@ class SaturnCluster(SpecCluster):
         self,
         n_workers: Optional[int] = None,
         worker_size: Optional[str] = None,
-        worker_is_spot: Optional[bool] = False,
+        worker_is_spot: Optional[bool] = None,
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
@@ -243,6 +245,8 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+        # only send kwargs that are explicity set by user
+        cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}
@@ -337,7 +341,7 @@ class SaturnCluster(SpecCluster):
 
     def __exit__(self, typ, value, traceback) -> None:
         """
-        magic method thate defines what should be done
+        magic method that defines what should be done
         when exiting a context manager's context. in other words
         at the end of this
 

@@ -65,7 +65,7 @@ class SaturnCluster(SpecCluster):
         If no size is provided, this will default to the size configured for Jupyter
         in your Saturn Cloud project.
     :param worker_is_spot: Flag to indicate if workers should be started on Spot Instances nodes.
-        Added in dask-saturn 0.1.0.
+        Added in dask-saturn 0.1.0, Saturn 2020.08.28.
     :param scheduler_size: A string with the size to use for the scheduler. A list of
         valid sizes and their details can be obtained with ``dask_saturn.describe_sizes()``.
         If no size is provided, this will default to the size configured for Jupyter

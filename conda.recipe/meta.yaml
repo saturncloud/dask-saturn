@@ -1,5 +1,5 @@
 {% set name = "dask-saturn" %}
-{% set version = "0.1.1" %}
+{% set version = "0.1.2" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: 0032e93ce9284e9eba717dfe89eb193df29fff2efc1d9cafadd8bb8f4002cc02
+  sha256: 4d00f9e0cbb669c5518c0bfb084bb6a60136342e92de5ee598d231006f8f983c
 
 build:
   noarch: python

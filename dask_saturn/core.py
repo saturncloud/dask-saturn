@@ -336,7 +336,6 @@ class SaturnCluster(SpecCluster):
 
             with SaturnCluster() as cluster:
         """
-        assert self.status == "running"
         return self
 
     def __exit__(self, typ, value, traceback) -> None:

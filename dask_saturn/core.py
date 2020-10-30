@@ -16,12 +16,12 @@ from urllib.parse import urljoin
 import requests
 
 from distributed import SpecCluster
-from distributed.comm import resolve_address
 from distributed.worker import get_client
 from tornado.ioloop import PeriodicCallback
 
 
 from .backoff import ExpBackoff
+from .plugins import SaturnSetup
 
 try:
     SATURN_TOKEN = os.environ["SATURN_TOKEN"]
@@ -120,6 +120,11 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
+
+    #         try:
+    #             self._register_default_plugin()
+    #         except Exception as e:
+    #             log.info("Registering failed: ", e)
 
     @classmethod
     def reset(
@@ -278,6 +283,7 @@ class SaturnCluster(SpecCluster):
                         "Retry in a few minutes. Check status in Saturn User Interface"
                     )
 
+    def _register_default_plugin(self):
         log.info("Registering default plugins")
         with get_client(self.scheduler_address) as client:
             output = client.register_worker_plugin(
@@ -359,16 +365,6 @@ class SaturnCluster(SpecCluster):
         """
         if self.autoclose:
             self.close()
-
-
-class SaturnSetup:
-    name = "saturn_setup"
-
-    def __init__(self, scheduler_address=None):
-        self.scheduler_address = scheduler_address
-
-    def setup(self, worker=None):
-        worker.scheduler.addr = resolve_address(self.scheduler_address)
 
 
 def _options() -> Dict[str, Any]:

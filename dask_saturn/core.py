@@ -16,6 +16,8 @@ from urllib.parse import urljoin
 import requests
 
 from distributed import SpecCluster
+from distributed.comm import resolve_address
+from distributed.worker import get_client
 from tornado.ioloop import PeriodicCallback
 
 
@@ -276,6 +278,13 @@ class SaturnCluster(SpecCluster):
                         "Retry in a few minutes. Check status in Saturn User Interface"
                     )
 
+        log.info("Registering default plugins")
+        with get_client(self.scheduler_address) as client:
+            output = client.register_worker_plugin(
+                SaturnSetup(scheduler_address=self.scheduler_address)
+            )
+            log.info(output)
+
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
         response = requests.get(url, headers=HEADERS)
@@ -350,6 +359,16 @@ class SaturnCluster(SpecCluster):
         """
         if self.autoclose:
             self.close()
+
+
+class SaturnSetup:
+    name = "saturn_setup"
+
+    def __init__(self, scheduler_address=None):
+        self.scheduler_address = scheduler_address
+
+    def setup(self, worker=None):
+        worker.scheduler.addr = resolve_address(self.scheduler_address)
 
 
 def _options() -> Dict[str, Any]:

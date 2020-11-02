@@ -37,7 +37,8 @@ handler.setFormatter(logging.Formatter(logfmt, datefmt))
 log.addHandler(handler)
 
 
-def get_base_url():
+def _get_base_url():
+    """Retrieve env var BASE_URL, throwing error if not available"""
     try:
         return os.environ["BASE_URL"]
     except KeyError as err:
@@ -47,7 +48,8 @@ def get_base_url():
         ) from err
 
 
-def get_headers():
+def _get_headers():
+    """Retrive env var SATURN_TOKEN, throwing error if not available and create headers"""
     try:
         SATURN_TOKEN = os.environ["SATURN_TOKEN"]
     except KeyError as err:
@@ -127,7 +129,7 @@ class SaturnCluster(SpecCluster):
         self.autoclose = autoclose
         try:
             self.register_default_plugin()
-        except Exception as e:
+        except ImportError as e:
             log.warning(f"Registering failed: {e}")
 
     @classmethod
@@ -149,7 +151,7 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         log.info("Resetting cluster.")
-        url = urljoin(get_base_url(), "api/dask_clusters/reset")
+        url = urljoin(_get_base_url(), "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
@@ -161,7 +163,7 @@ class SaturnCluster(SpecCluster):
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
-        response = requests.post(url, data=json.dumps(cluster_config), headers=get_headers())
+        response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
         if not response.ok:
             raise ValueError(response.reason)
         return cls(**cluster_config)
@@ -174,7 +176,7 @@ class SaturnCluster(SpecCluster):
         if self.cluster_url is None:
             return "closed"
         url = urljoin(self.cluster_url, "status")
-        response = requests.get(url, headers=get_headers())
+        response = requests.get(url, headers=_get_headers())
         if not response.ok:
             return self._get_pod_status()
         return response.json()["status"]
@@ -183,7 +185,7 @@ class SaturnCluster(SpecCluster):
         """
         Status of the KubeCluster pod.
         """
-        response = requests.get(self.cluster_url[:-1], headers=get_headers())
+        response = requests.get(self.cluster_url[:-1], headers=_get_headers())
         if response.ok:
             return response.json()["status"]
         else:
@@ -219,7 +221,7 @@ class SaturnCluster(SpecCluster):
         ValueError if the scheduler is in a bad state.
         """
         url = urljoin(self.cluster_url, "scheduler_info")
-        response = requests.get(url, headers=get_headers())
+        response = requests.get(url, headers=_get_headers())
         if not response.ok:
             if self._get_pod_status() in ["error", "closed", "stopped"]:
                 for pc in self.periodic_callbacks.values():
@@ -245,7 +247,7 @@ class SaturnCluster(SpecCluster):
         For documentation on this method's parameters, see
         ``help(SaturnCluster)``.
         """
-        url = urljoin(get_base_url(), "api/dask_clusters")
+        url = urljoin(_get_base_url(), "api/dask_clusters")
         self.cluster_url: Optional[str] = None
 
         cluster_config = {
@@ -262,7 +264,7 @@ class SaturnCluster(SpecCluster):
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
-            response = requests.post(url, data=json.dumps(cluster_config), headers=get_headers())
+            response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
             if not response.ok:
                 raise ValueError(response.reason)
             data = response.json()
@@ -288,6 +290,7 @@ class SaturnCluster(SpecCluster):
                     )
 
     def register_default_plugin(self):
+        """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
         with get_client(self.scheduler_address) as client:
             output = client.register_worker_plugin(SaturnSetup())
@@ -295,7 +298,7 @@ class SaturnCluster(SpecCluster):
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
-        response = requests.get(url, headers=get_headers())
+        response = requests.get(url, headers=_get_headers())
         if not response.ok:
             raise ValueError(response.reason)
         return response.json()
@@ -307,7 +310,7 @@ class SaturnCluster(SpecCluster):
         :param n: number of workers to scale to.
         """
         url = urljoin(self.cluster_url, "scale")
-        response = requests.post(url, json.dumps({"n": n}), headers=get_headers())
+        response = requests.post(url, json.dumps({"n": n}), headers=_get_headers())
         if not response.ok:
             raise ValueError(response.reason)
 
@@ -315,7 +318,7 @@ class SaturnCluster(SpecCluster):
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
         url = urljoin(self.cluster_url, "adapt")
         response = requests.post(
-            url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=get_headers()
+            url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=_get_headers()
         )
         if not response.ok:
             raise ValueError(response.reason)
@@ -325,7 +328,7 @@ class SaturnCluster(SpecCluster):
         Defines what should be done when closing the cluster.
         """
         url = urljoin(self.cluster_url, "close")
-        response = requests.post(url, headers=get_headers())
+        response = requests.post(url, headers=_get_headers())
         if not response.ok:
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
@@ -370,8 +373,8 @@ class SaturnCluster(SpecCluster):
 
 
 def _options() -> Dict[str, Any]:
-    url = urljoin(get_base_url(), "api/dask_clusters/info")
-    response = requests.get(url, headers=get_headers())
+    url = urljoin(_get_base_url(), "api/dask_clusters/info")
+    response = requests.get(url, headers=_get_headers())
     if not response.ok:
         raise ValueError(response.reason)
     return response.json()["server_options"]

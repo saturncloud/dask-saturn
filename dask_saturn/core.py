@@ -128,7 +128,7 @@ class SaturnCluster(SpecCluster):
         try:
             self.register_default_plugin()
         except Exception as e:
-            log.info("Registering failed: ", e)
+            log.warning(f"Registering failed: {e}")
 
     @classmethod
     def reset(

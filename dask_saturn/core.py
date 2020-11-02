@@ -129,7 +129,7 @@ class SaturnCluster(SpecCluster):
         self.autoclose = autoclose
         try:
             self.register_default_plugin()
-        except ImportError as e:
+        except Exception as e:  # pylint: disable=broad-except
             log.warning(f"Registering failed: {e}")
 
     @classmethod

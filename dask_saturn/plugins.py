@@ -10,6 +10,7 @@ class SaturnSetup:
 
     name = "saturn_setup"
 
+    # pylint: disable=no-self-use
     def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
         worker.scheduler.addr = resolve_address(worker.scheduler.addr)

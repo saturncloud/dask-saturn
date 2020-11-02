@@ -131,7 +131,7 @@ class SaturnCluster(SpecCluster):
             self.register_default_plugin()
         except Exception as e:  # pylint: disable=broad-except
             log.warning(
-                f"Registering default plugin failed: {e}. Hint: you might "
+                f"Registering default plugin failed: {e} Hint: you might "
                 "have a different dask-saturn version on your dask cluster."
             )
 

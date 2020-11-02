@@ -21,7 +21,7 @@ from tornado.ioloop import PeriodicCallback
 
 
 from .backoff import ExpBackoff
-from .plugins import SaturnSetup
+from .plugins import SaturnSetup, RunScript, GitPull
 
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
@@ -297,6 +297,18 @@ class SaturnCluster(SpecCluster):
         log.info("Registering default plugins")
         with get_client(self.scheduler_address) as client:
             output = client.register_worker_plugin(SaturnSetup())
+            log.info(output)
+
+    def git_pull(self):
+        """Pull latest changes from git into all existing workers."""
+        with get_client(self.scheduler_address) as client:
+            output = client.register_worker_plugin(GitPull())
+            log.info(output)
+
+    def run_script(self, filename):
+        """Run the script on every existing and new worker."""
+        with get_client(self.scheduler_address) as client:
+            output = client.register_worker_plugin(RunScript(filename))
             log.info(output)
 
     def _get_info(self) -> Dict[str, Any]:

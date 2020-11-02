@@ -1,13 +1,24 @@
 repos:
-  - repo: https://github.com/ambv/black
+  - repo: https://github.com/psf/black
     rev: stable
     hooks:
       - id: black
         language_version: python3.7
         args: ["--line-length", "100"]
-
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.9
     hooks:
       - id: flake8
         language_version: python3.7
+        args:
+          [
+            --count,
+            --max-line-length=100,
+            "--ignore=E121,E123,E126,E203,E226,E24,E704,W503,W504",
+          ]
+  - repo: https://github.com/PyCQA/pylint
+    rev: pylint-2.6.0
+    hooks:
+      - id: pylint
+        language_version: python3.7
+        args: ["--disable=no-member", "--disable=no-name-in-module"]

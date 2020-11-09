@@ -27,7 +27,8 @@ async def _register_files(paths=None):
     with get_client() as client:
         # If paths isn't provided, register all files in datasets that start with prefix
         if paths is None:
-            paths = [p[len(PREFIX) :] for p in await client.list_datasets() if p.startswith(PREFIX)]
+            datasets = await client.list_datasets()
+            paths = [p[len(PREFIX) :] for p in datasets if p.startswith(PREFIX)]
 
         for path in paths:
             # retrieve the filedata from the scheduler
@@ -48,7 +49,11 @@ async def _register_files(paths=None):
 
 
 def upload_files_to_workers(client, path):
-    """Upload files to all workers. Single files or directories are valid."""
+    """Upload files to all workers. Single files or directories are valid.
+
+    If used in conjunction with the ``UploadFiles`` plugin, all files will be uploaded
+    to new workers as they get spun up.
+    """
     # normalize the path
     path = os.path.abspath(path)
 
@@ -74,11 +79,14 @@ def upload_files_to_workers(client, path):
 
 
 class UploadFiles:
-    """WorkerPlugin for uploading files or directories to dask workers."""
+    """WorkerPlugin for uploading files or directories to dask workers.
+
+    Use ``upload_files_to_workers`` to control which paths are tracked.
+    """
 
     name = "upload_files"
 
-    # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,unused-argument
     async def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
         await _register_files()

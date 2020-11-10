@@ -93,7 +93,7 @@ def sync_files(client, path=None):
         client.unpublish_dataset(p)
 
     client.publish_dataset(**{f"{PREFIX}{path}": payload})
-    client.run_coroutine(register_files_to_worker, paths=[path])
+    client.run(register_files_to_worker, paths=[path])
 
 
 class RegisterFiles:

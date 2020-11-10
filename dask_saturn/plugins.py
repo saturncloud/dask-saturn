@@ -22,7 +22,7 @@ class SaturnSetup:
         worker.scheduler.addr = resolve_address(worker.scheduler.addr)
 
 
-async def _register_files(paths=None):
+async def register_files_to_worker(paths=None):
     """Register all files in the given paths on the current worker"""
     with get_client() as client:
         # If paths isn't provided, register all files in datasets that start with prefix
@@ -48,10 +48,30 @@ async def _register_files(paths=None):
     return os.listdir()
 
 
-def upload_files_to_workers(client, path):
-    """Upload files to all workers. Single files or directories are valid.
+def list_files(client):
+    """List all files that are being tracked in the file registry"""
+    datasets = client.list_datasets()
+    return [p[len(PREFIX) :] for p in datasets if p.startswith(PREFIX)]
 
-    If used in conjunction with the ``UploadFiles`` plugin, all files will be uploaded
+
+def clear_files(client):
+    """Clear all files that are being tracked in the file registry.
+
+    After this is run, any new worker that is spun up, won't have any files
+    automatically registered even if the RegisterFiles plugin is in use.
+    """
+    paths = list_files(client)
+    for path in paths:
+        client.unpublish_dataset(path)
+
+
+def sync_files(client, path=None):
+    """Upload files to all workers and add to file registry.
+
+    :param client: distributed.Client object
+    :param path: string or path obj pointing to file or directory to track.
+
+    If used in conjunction with the ``RegisterFiles`` plugin, all files will be uploaded
     to new workers as they get spun up.
     """
     # normalize the path
@@ -73,20 +93,18 @@ def upload_files_to_workers(client, path):
         client.unpublish_dataset(p)
 
     client.publish_dataset(**{f"{PREFIX}{path}": payload})
-
-    # update files on any existing workers
-    client.run(_register_files, paths=[path])
+    client.run_coroutine(register_files_to_worker, paths=[path])
 
 
-class UploadFiles:
+class RegisterFiles:
     """WorkerPlugin for uploading files or directories to dask workers.
 
-    Use ``upload_files_to_workers`` to control which paths are tracked.
+    Use ``sync_files`` to control which paths are tracked.
     """
 
-    name = "upload_files"
+    name = "register_files"
 
     # pylint: disable=no-self-use,unused-argument
     async def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
-        await _register_files()
+        await register_files_to_worker()

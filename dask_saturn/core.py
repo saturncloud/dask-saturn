@@ -92,6 +92,12 @@ class SaturnCluster(SpecCluster):
         when its ``__exit__()`` method is called. By default, this is ``False``. Set
         this parameter to ``True`` if you want to use it in a context manager which
         closes the cluster when it exits.
+    :param reset: How to handle different keyword arguments between existing and new
+        cluster. If False (default) an error will be thrown if the settings don't match
+        new settings. If True, any existing cluster will be closed and a new one started
+        with the new settings applied.
+    :param raise_errors: Whether to raise errors that occur while the cluster is starting.
+        Default is True.
     """
 
     # pylint: disable=unused-argument,super-init-not-called
@@ -107,6 +113,8 @@ class SaturnCluster(SpecCluster):
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
         autoclose: bool = False,
+        reset: bool = False,
+        raise_errors: bool = True,
         **kwargs,
     ):
         if cluster_url is None:
@@ -118,6 +126,8 @@ class SaturnCluster(SpecCluster):
                 nprocs=nprocs,
                 nthreads=nthreads,
                 scheduler_service_wait_timeout=scheduler_service_wait_timeout,
+                reset=reset,
+                raise_errors=raise_errors,
             )
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
@@ -130,10 +140,14 @@ class SaturnCluster(SpecCluster):
         try:
             self.register_default_plugin()
         except Exception as e:  # pylint: disable=broad-except
-            log.warning(
+            msg = (
                 f"Registering default plugin failed: {e} Hint: you might "
                 "have a different dask-saturn version on your dask cluster."
             )
+            if raise_errors:
+                raise ValueError(msg) from e
+            else:
+                log.warning(msg)
 
     @classmethod
     def reset(
@@ -150,26 +164,20 @@ class SaturnCluster(SpecCluster):
         Destroy existing Dask cluster attached to the Jupyter Notebook or
         Custom Deployment and recreate it with the given configuration.
 
-        For documentation on this method's parameters, see
-        ``help(SaturnCluster)``.
+        This method has been deprecated, use ``SaturnCluster(..., reset=True)`` instead
         """
-        log.info("Resetting cluster.")
-        url = urljoin(_get_base_url(), "api/dask_clusters/reset")
-        cluster_config = {
-            "n_workers": n_workers,
-            "worker_size": worker_size,
-            "worker_is_spot": worker_is_spot,
-            "scheduler_size": scheduler_size,
-            "nprocs": nprocs,
-            "nthreads": nthreads,
-        }
-        # only send kwargs that are explicity set by user
-        cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
-
-        response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
-        if not response.ok:
-            raise ValueError(response.reason)
-        return cls(**cluster_config)
+        log.warning(
+            "This method has been deprecated. " "Instead use ``SaturnCluster(..., reset=True)`` "
+        )
+        return cls(
+            n_workers=n_workers,
+            worker_size=worker_size,
+            worker_is_spot=worker_is_spot,
+            scheduler_size=scheduler_size,
+            nprocs=nprocs,
+            nthreads=nthreads,
+            reset=True,
+        )
 
     @property
     def status(self) -> Optional[str]:
@@ -243,6 +251,8 @@ class SaturnCluster(SpecCluster):
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        reset: bool = False,
+        raise_errors: bool = True,
     ) -> None:
         """
         Start a cluster that has already been defined for the project.
@@ -261,9 +271,14 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
-        # only send kwargs that are explicity set by user
+        # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
-
+        if reset:
+            log.info("Resetting cluster.")
+            url = urljoin(_get_base_url(), "api/dask_clusters/reset")
+            response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
+            if not response.ok:
+                raise ValueError(response.reason)
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
@@ -274,6 +289,8 @@ class SaturnCluster(SpecCluster):
             warnings = data.get("warnings")
             if warnings is not None:
                 for warning in warnings:
+                    if raise_errors:
+                        raise ValueError(warning)
                     if not logged_warnings.get(warning):
                         logged_warnings[warning] = True
                         log.warning(warning)
@@ -288,9 +305,8 @@ class SaturnCluster(SpecCluster):
 
             if self.cluster_url is None:
                 if not expBackoff.wait():
-                    raise ValueError(
-                        "Retry in a few minutes. Check status in Saturn User Interface"
-                    )
+                    log.warning("Retry in a few minutes. Check status in Saturn User Interface")
+                    break
 
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""

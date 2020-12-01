@@ -3,7 +3,9 @@ Worker plugins to be used with SaturnCluster objects.
 """
 import os
 import subprocess
+from typing import List, Optional
 
+from distributed import Client
 from distributed.comm import resolve_address
 from distributed.worker import get_client
 
@@ -22,7 +24,7 @@ class SaturnSetup:
         worker.scheduler.addr = resolve_address(worker.scheduler.addr)
 
 
-async def register_files_to_worker(paths=None):
+async def register_files_to_worker(paths: Optional[List[str]] = None) -> List[str]:
     """Register all files in the given paths on the current worker"""
     with get_client() as client:
         # If paths isn't provided, register all files in datasets that start with prefix
@@ -48,13 +50,13 @@ async def register_files_to_worker(paths=None):
     return os.listdir()
 
 
-def list_files(client):
+def list_files(client: Client) -> List[str]:
     """List all files that are being tracked in the file registry"""
     datasets = client.list_datasets()
     return [p[len(PREFIX) :] for p in datasets if p.startswith(PREFIX)]
 
 
-def clear_files(client):
+def clear_files(client: Client):
     """Clear all files that are being tracked in the file registry.
 
     After this is run, any new worker that is spun up, won't have any files
@@ -65,7 +67,7 @@ def clear_files(client):
         client.unpublish_dataset(path)
 
 
-def sync_files(client, path=None):
+def sync_files(client: Client, path: Optional[str] = None):
     """Upload files to all workers and add to file registry.
 
     :param client: distributed.Client object

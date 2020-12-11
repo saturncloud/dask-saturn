@@ -14,8 +14,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from distributed import SpecCluster
-from distributed.worker import get_client
+from distributed import Client, SpecCluster
 from tornado.ioloop import PeriodicCallback
 
 
@@ -252,8 +251,9 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         url = urljoin(self.settings.BASE_URL, "api/dask_clusters")
+        url_query = ""
         if self.external:
-            url += "?is_external=true"
+            url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
         cluster_config = {
@@ -264,6 +264,8 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+        if self.external:
+            cluster_config["project_id"] = self.external.project_id
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
@@ -271,7 +273,9 @@ class SaturnCluster(SpecCluster):
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
             response = requests.post(
-                url, data=json.dumps(cluster_config), headers=self.settings._get_headers()
+                url + url_query,
+                data=json.dumps(cluster_config),
+                headers=self.settings._get_headers(),
             )
             if not response.ok:
                 raise ValueError(response.reason)
@@ -301,11 +305,9 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
-        with get_client(self.scheduler_address) as client:
-            if self.security:
-                client.security = self.security
-            output = client.register_worker_plugin(SaturnSetup())
-            log.info(output)
+        client = Client(self.scheduler_address, security=self.security)
+        output = client.register_worker_plugin(SaturnSetup())
+        log.info(output)
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")

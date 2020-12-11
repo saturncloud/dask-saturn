@@ -6,7 +6,7 @@ from outside of the Saturn installation.
 import requests
 
 from cryptography import x509
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -31,9 +31,13 @@ class ExternalConnection:
         :param base_url: Saturn cluster URL. May also be set by the BASE_URL env var.
         :param saturn_token: User auth token. May also be set by the SATURN_TOKEN env var.
         """
-
+        if not project_id:
+            raise ValueError("Invalid ExternalConnection: project_id is required")
         self.project_id = project_id
-        self.settings = Settings(base_url, saturn_token)
+        try:
+            self.settings = Settings(base_url, saturn_token, is_external=True)
+        except Exception as e:
+            raise ValueError(f"Invalid ExternalConnection: {e}")
 
     def _client_tls(
         self, dask_cluster_id: str
@@ -51,7 +55,7 @@ class ExternalConnection:
             headers=self.settings._get_headers(),
         )
         if not resp.ok:
-            raise ValueError(resp.reason)
+            resp.raise_for_status()
 
         cert_chain = _deserialize_cert_chain(resp.content)
         if len(cert_chain) <= 1:
@@ -89,6 +93,18 @@ def _create_csr(common_name: str) -> (rsa.RSAPrivateKey, x509.CertificateSigning
                     x509.NameAttribute(NameOID.COMMON_NAME, common_name),
                 ]
             )
+        )
+        .add_extension(
+            x509.BasicConstraints(ca=False, path_length=None),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]),
+            critical=True,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
+            critical=False,
         )
         .sign(key, hashes.SHA256(), default_backend())
     )

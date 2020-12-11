@@ -9,7 +9,7 @@ import json
 import logging
 
 from sys import stdout
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
@@ -86,14 +86,18 @@ class SaturnCluster(SpecCluster):
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
         autoclose: bool = False,
-        external_connection: Optional[ExternalConnection] = None,
+        external_connection: Optional[Union[Dict[str, str], ExternalConnection]] = None,
         **kwargs,
     ):
-        self.external = external_connection
-        if self.external is None:
-            self.settings = Settings()
-        else:
+        if external_connection:
+            if type(external_connection) is dict:
+                self.external = ExternalConnection(**external_connection)
+            else:
+                self.external = external_connection
             self.settings = self.external.settings
+        else:
+            self.external = None
+            self.settings = Settings()
 
         if cluster_url is None:
             self._start(
@@ -115,7 +119,7 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
-        if self.external:
+        if self.settings.is_external:
             self.security = self.external.security(self.dask_cluster_id)
         else:
             self.security = None
@@ -252,7 +256,7 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.settings.BASE_URL, "api/dask_clusters")
         url_query = ""
-        if self.external:
+        if self.settings.is_external:
             url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
@@ -264,8 +268,9 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
-        if self.external:
+        if self.settings.is_external:
             cluster_config["project_id"] = self.external.project_id
+            cluster_config["enable_external_access"] = True
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
@@ -305,13 +310,13 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
-        client = Client(self.scheduler_address, security=self.security)
-        output = client.register_worker_plugin(SaturnSetup())
-        log.info(output)
+        with Client(self.scheduler_address, security=self.security) as client:
+            output = client.register_worker_plugin(SaturnSetup())
+            log.info(output)
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
-        if self.external:
+        if self.settings.is_external:
             url += "?is_external=true"
         response = requests.get(url, headers=self.settings._get_headers())
         if not response.ok:

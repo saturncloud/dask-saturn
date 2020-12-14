@@ -15,8 +15,8 @@ from urllib.parse import urljoin
 import requests
 
 from distributed import Client, SpecCluster
+from distributed.security import Security
 from tornado.ioloop import PeriodicCallback
-
 
 from .backoff import ExpBackoff
 from .external import ExternalConnection
@@ -122,7 +122,7 @@ class SaturnCluster(SpecCluster):
         if self.settings.is_external:
             self.security = self.external.security(self.dask_cluster_id)
         else:
-            self.security = None
+            self.security = Security()
 
         try:
             self.register_default_plugin()
@@ -270,7 +270,6 @@ class SaturnCluster(SpecCluster):
         }
         if self.settings.is_external:
             cluster_config["project_id"] = self.external.project_id
-            cluster_config["enable_external_access"] = True
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
@@ -310,7 +309,7 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
-        with Client(self.scheduler_address, security=self.security) as client:
+        with Client(self) as client:
             output = client.register_worker_plugin(SaturnSetup())
             log.info(output)
 

@@ -48,7 +48,7 @@ class ExternalConnection:
         """
         key, csr = _create_csr(f"Dask Client {dask_cluster_id}")
 
-        url = urljoin(self.settings.BASE_URL, f"/api/dask_clusters/{dask_cluster_id}/external")
+        url = urljoin(self.settings.BASE_URL, f"/api/dask_clusters/{dask_cluster_id}/csr")
         resp = requests.post(
             url,
             data=_serialize_csr(csr),

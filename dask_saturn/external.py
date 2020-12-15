@@ -11,7 +11,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from distributed.security import Security
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urljoin
 
 from .settings import Settings
@@ -46,7 +46,7 @@ class ExternalConnection:
         Generate an RSA key and certificate signing request. Send the CSR to Saturn to be signed
         by the Dask cluster CA, and return the key, cert, and CA.
         """
-        key, csr = _create_csr(f"Dask Client {dask_cluster_id}")
+        csr, key = _create_csr(f"Dask Client {dask_cluster_id}")
 
         url = urljoin(self.settings.BASE_URL, f"/api/dask_clusters/{dask_cluster_id}/csr")
         resp = requests.post(
@@ -82,7 +82,9 @@ class ExternalConnection:
         )
 
 
-def _create_csr(common_name: str) -> (rsa.RSAPrivateKey, x509.CertificateSigningRequest):
+def _create_csr(
+    common_name: str
+) -> Tuple[x509.CertificateSigningRequest, rsa.RSAPrivateKeyWithSerialization]:
     """Return RSA key and certificate signing request"""
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
     csr = (
@@ -108,7 +110,7 @@ def _create_csr(common_name: str) -> (rsa.RSAPrivateKey, x509.CertificateSigning
         )
         .sign(key, hashes.SHA256(), default_backend())
     )
-    return key, csr
+    return csr, key
 
 
 def _serialize_csr(csr: x509.CertificateSigningRequest) -> bytes:
@@ -121,7 +123,7 @@ def _serialize_cert(cert: x509.Certificate) -> bytes:
     return cert.public_bytes(serialization.Encoding.PEM)
 
 
-def _serialize_key(key: rsa.RSAPrivateKey) -> bytes:
+def _serialize_key(key: rsa.RSAPrivateKeyWithSerialization) -> bytes:
     """Return the PEM bytes from an RSA private key"""
     return key.private_bytes(
         encoding=serialization.Encoding.PEM,

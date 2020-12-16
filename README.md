@@ -26,6 +26,10 @@ option. Similarly, you can set the `scheduler_size`, `worker_size`, and `worker_
 > Note: If the cluster is already running then you can't change the settings.
 > Attempting to do so will raise a warning.
 
+Use the `autoclose` option to set up a cluster that is tied to the client
+kernel. This functions like a regular dask `LocalCluster`, when your jupyter
+kernel dies or is restarted, the dask cluster will close.
+
 ## Adjust number of workers
 Once you have a cluster you can interact with it via the jupyter
 widget, or using the `scale` and `adapt` methods.
@@ -75,6 +79,46 @@ You can also call this without instantiating the cluster first:
 ```python
 cluster = SaturnCluster.reset(n_workers=3)
 ```
+
+## Sync files to workers
+
+When working with distributed dask clusters, the workers don't have access to the same file system as your client does. So you will see files in your jupyter server that aren't available on the workers. To move files to the workers you can use the `RegisterFiles` plugin and call `sync_files` on any path that you want to update on the workers.
+
+For instance if you have a file structure like:
+```
+/home/jovyan/project/
+|---- utils/
+|   |---- __init__.py
+|   |---- hello.py
+|
+|---- Untitled.ipynb
+```
+
+where hello.py contains:
+
+```python
+# utils/hello.py
+def greet():
+    return "Hello"
+```
+
+If the code in hello.py changes or you add new files to utils, you'll want to push those changes to the workers. After setting up the `SaturnCluster` and the `Client`, register the `RegisterFiles` plugin with the workers. Then every time you make changes to the files in utils, run `sync_files`. The worker plugin makes sure that any new worker that comes up will have any files that you have synced.
+
+```python
+from dask_saturn import RegisterFiles, sync_files
+
+client.register_worker_plugin(RegisterFiles())
+sync_files(client, "utils")
+
+# If a python script has changed, restart the workers so they will see the changes
+client.restart()
+
+# import the function and tell the workers to run it
+from util.hello import greet
+client.run(greet)
+```
+
+> TIP: You can always check the state of the filesystem on your workers by running `client.run(os.listdir)`
 
 ## Development
 

@@ -35,7 +35,7 @@ class ExternalConnection:
             raise ValueError("Invalid ExternalConnection: project_id is required")
         self.project_id = project_id
         try:
-            self.settings = Settings(base_url, saturn_token, is_external=True)
+            self.settings = Settings(base_url, saturn_token)
         except Exception as e:
             raise ValueError(f"Invalid ExternalConnection: {e}") from e
 
@@ -48,11 +48,11 @@ class ExternalConnection:
         """
         csr, key = _create_csr(f"Dask Client {dask_cluster_id}")
 
-        url = urljoin(self.settings.BASE_URL, f"/api/dask_clusters/{dask_cluster_id}/csr")
+        url = urljoin(self.settings.url, f"/api/dask_clusters/{dask_cluster_id}/csr")
         resp = requests.post(
             url,
             data=_serialize_csr(csr),
-            headers=self.settings._get_headers(),
+            headers=self.settings.headers,
         )
         if not resp.ok:
             resp.raise_for_status()

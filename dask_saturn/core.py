@@ -119,7 +119,7 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
-        if self.settings.is_external:
+        if self.external:
             self.security = self.external.security(self.dask_cluster_id)
         else:
             self.security = Security()
@@ -156,7 +156,7 @@ class SaturnCluster(SpecCluster):
             settings = Settings()
         else:
             settings = external_connection.settings
-        url = urljoin(settings.BASE_URL, "api/dask_clusters/reset")
+        url = urljoin(settings.url, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
@@ -168,9 +168,7 @@ class SaturnCluster(SpecCluster):
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
-        response = requests.post(
-            url, data=json.dumps(cluster_config), headers=settings._get_headers()
-        )
+        response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
         return cls(**cluster_config, external_connection=external_connection)
@@ -183,7 +181,7 @@ class SaturnCluster(SpecCluster):
         if self.cluster_url is None:
             return "closed"
         url = urljoin(self.cluster_url, "status")
-        response = requests.get(url, headers=self.settings._get_headers())
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             return self._get_pod_status()
         return response.json()["status"]
@@ -192,7 +190,7 @@ class SaturnCluster(SpecCluster):
         """
         Status of the KubeCluster pod.
         """
-        response = requests.get(self.cluster_url[:-1], headers=self.settings._get_headers())
+        response = requests.get(self.cluster_url[:-1], headers=self.settings.headers)
         if response.ok:
             return response.json()["status"]
         else:
@@ -228,7 +226,7 @@ class SaturnCluster(SpecCluster):
         ValueError if the scheduler is in a bad state.
         """
         url = urljoin(self.cluster_url, "scheduler_info")
-        response = requests.get(url, headers=self.settings._get_headers())
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             if self._get_pod_status() in ["error", "closed", "stopped"]:
                 for pc in self.periodic_callbacks.values():
@@ -254,9 +252,9 @@ class SaturnCluster(SpecCluster):
         For documentation on this method's parameters, see
         ``help(SaturnCluster)``.
         """
-        url = urljoin(self.settings.BASE_URL, "api/dask_clusters")
+        url = urljoin(self.settings.url, "api/dask_clusters")
         url_query = ""
-        if self.settings.is_external:
+        if self.external:
             url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
@@ -268,7 +266,7 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
-        if self.settings.is_external:
+        if self.external:
             cluster_config["project_id"] = self.external.project_id
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
@@ -279,7 +277,7 @@ class SaturnCluster(SpecCluster):
             response = requests.post(
                 url + url_query,
                 data=json.dumps(cluster_config),
-                headers=self.settings._get_headers(),
+                headers=self.settings.headers,
             )
             if not response.ok:
                 raise ValueError(response.reason)
@@ -315,9 +313,9 @@ class SaturnCluster(SpecCluster):
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
-        if self.settings.is_external:
+        if self.external:
             url += "?is_external=true"
-        response = requests.get(url, headers=self.settings._get_headers())
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
         return response.json()
@@ -329,7 +327,7 @@ class SaturnCluster(SpecCluster):
         :param n: number of workers to scale to.
         """
         url = urljoin(self.cluster_url, "scale")
-        response = requests.post(url, json.dumps({"n": n}), headers=self.settings._get_headers())
+        response = requests.post(url, json.dumps({"n": n}), headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
 
@@ -339,7 +337,7 @@ class SaturnCluster(SpecCluster):
         response = requests.post(
             url,
             json.dumps({"minimum": minimum, "maximum": maximum}),
-            headers=self.settings._get_headers(),
+            headers=self.settings.headers,
         )
         if not response.ok:
             raise ValueError(response.reason)
@@ -349,7 +347,7 @@ class SaturnCluster(SpecCluster):
         Defines what should be done when closing the cluster.
         """
         url = urljoin(self.cluster_url, "close")
-        response = requests.post(url, headers=self.settings._get_headers())
+        response = requests.post(url, headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
@@ -398,8 +396,8 @@ def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[s
         settings = Settings()
     else:
         settings = external_connection.settings
-    url = urljoin(settings.BASE_URL, "api/dask_clusters/info")
-    response = requests.get(url, headers=settings._get_headers())
+    url = urljoin(settings.url, "api/dask_clusters/info")
+    response = requests.get(url, headers=settings.headers)
     if not response.ok:
         raise ValueError(response.reason)
     return response.json()["server_options"]

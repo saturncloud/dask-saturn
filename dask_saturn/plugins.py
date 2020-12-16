@@ -2,6 +2,7 @@
 Worker plugins to be used with SaturnCluster objects.
 """
 import os
+import sys
 import subprocess
 from typing import List, Optional
 
@@ -22,6 +23,9 @@ class SaturnSetup:
     def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
         worker.scheduler.addr = resolve_address(worker.scheduler.addr)
+        cwd = os.getcwd()
+        if cwd not in sys.path:
+            sys.path.append(cwd)
 
 
 async def register_files_to_worker(paths: Optional[List[str]] = None) -> List[str]:

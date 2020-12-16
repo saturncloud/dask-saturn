@@ -37,7 +37,7 @@ class ExternalConnection:
         try:
             self.settings = Settings(base_url, saturn_token, is_external=True)
         except Exception as e:
-            raise ValueError(f"Invalid ExternalConnection: {e}")
+            raise ValueError(f"Invalid ExternalConnection: {e}") from e
 
     def _client_tls(
         self, dask_cluster_id: str
@@ -83,7 +83,7 @@ class ExternalConnection:
 
 
 def _create_csr(
-    common_name: str
+    common_name: str,
 ) -> Tuple[x509.CertificateSigningRequest, rsa.RSAPrivateKeyWithSerialization]:
     """Return RSA key and certificate signing request"""
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())

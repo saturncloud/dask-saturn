@@ -90,7 +90,7 @@ class SaturnCluster(SpecCluster):
         **kwargs,
     ):
         if external_connection:
-            if type(external_connection) is dict:
+            if isinstance(external_connection, dict):
                 self.external = ExternalConnection(**external_connection)
             else:
                 self.external = external_connection

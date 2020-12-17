@@ -27,6 +27,7 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
 log = logging.getLogger("dask-saturn")
 if log.level == logging.NOTSET:
+    logging.basicConfig()
     log.setLevel(logging.INFO)
 
 

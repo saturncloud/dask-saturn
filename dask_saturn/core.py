@@ -8,7 +8,6 @@ for details on the parent class.
 import json
 import logging
 
-from sys import stdout
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
@@ -26,15 +25,9 @@ from .settings import Settings
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
-logfmt = "[%(asctime)s] %(levelname)s - %(name)s | %(message)s"
-datefmt = "%Y-%m-%d %H:%M:%S"
-
 log = logging.getLogger("dask-saturn")
-log.setLevel(logging.INFO)
-handler = logging.StreamHandler(stream=stdout)
-handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter(logfmt, datefmt))
-log.addHandler(handler)
+if log.level == logging.NOTSET:
+    log.setLevel(logging.INFO)
 
 
 class SaturnCluster(SpecCluster):

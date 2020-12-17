@@ -26,6 +26,8 @@ from .plugins import SaturnSetup
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
 log = logging.getLogger("dask-saturn")
+if log.level == logging.NOTSET:
+    log.setLevel(logging.INFO)
 
 
 def _get_base_url():

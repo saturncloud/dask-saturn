@@ -24,4 +24,4 @@ lint:
 	#   * W0212: access to protected member
 	#   * W0221: parameters differ from overridden method
 	#   * W1203: use lazy % formatting
-	pylint --disable=C0103,C0301,C0330,E0401,R0903,R0913,R0914,R1705,R1720,W0107,W0212,W0221,W1203 dask_saturn/
+	pylint --disable=C0103,C0301,C0330,E0401,R0903,R0913,R0914,R1705,R1720,W0107,W0212,W0221,W1203,wrong-import-order dask_saturn/

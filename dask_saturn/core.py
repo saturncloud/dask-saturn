@@ -5,22 +5,22 @@ See https://distributed.dask.org/en/latest/_modules/distributed/deploy/spec.html
 for details on the parent class.
 """
 
-import os
 import json
 import logging
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 
-from distributed import SpecCluster
-from distributed.worker import get_client
+from distributed import Client, SpecCluster
+from distributed.security import Security
 from tornado.ioloop import PeriodicCallback
 
-
 from .backoff import ExpBackoff
+from .external import ExternalConnection
 from .plugins import SaturnSetup
+from .settings import Settings
 
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
@@ -28,29 +28,6 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 log = logging.getLogger("dask-saturn")
 if log.level == logging.NOTSET:
     log.setLevel(logging.INFO)
-
-
-def _get_base_url():
-    """Retrieve env var BASE_URL, throwing error if not available"""
-    try:
-        return os.environ["BASE_URL"]
-    except KeyError as err:
-        raise RuntimeError(
-            "Required environment variable BASE_URL not set. "
-            "dask-saturn code should only be run on Saturn Cloud infrastructure."
-        ) from err
-
-
-def _get_headers():
-    """Retrive env var SATURN_TOKEN, throwing error if not available and create headers"""
-    try:
-        SATURN_TOKEN = os.environ["SATURN_TOKEN"]
-    except KeyError as err:
-        raise RuntimeError(
-            "Required environment variable SATURN_TOKEN not set. "
-            "dask-saturn code should only be run on Saturn Cloud infrastructure."
-        ) from err
-    return {"Authorization": f"token {SATURN_TOKEN}"}
 
 
 class SaturnCluster(SpecCluster):
@@ -85,9 +62,11 @@ class SaturnCluster(SpecCluster):
         when its ``__exit__()`` method is called. By default, this is ``False``. Set
         this parameter to ``True`` if you want to use it in a context manager which
         closes the cluster when it exits.
+    :param external_connection: Configuration for connecting to Saturn Dask from
+        outside of the Saturn installation.
     """
 
-    # pylint: disable=unused-argument,super-init-not-called
+    # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
     def __init__(
         self,
         *args,
@@ -100,8 +79,19 @@ class SaturnCluster(SpecCluster):
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
         autoclose: bool = False,
+        external_connection: Optional[Union[Dict[str, str], ExternalConnection]] = None,
         **kwargs,
     ):
+        if external_connection:
+            if isinstance(external_connection, dict):
+                self.external = ExternalConnection(**external_connection)
+            else:
+                self.external = external_connection
+            self.settings = self.external.settings
+        else:
+            self.external = None
+            self.settings = Settings()
+
         if cluster_url is None:
             self._start(
                 n_workers=n_workers,
@@ -114,12 +104,19 @@ class SaturnCluster(SpecCluster):
             )
         else:
             self.cluster_url = cluster_url if cluster_url.endswith("/") else cluster_url + "/"
+            self.dask_cluster_id = self.cluster_url.rstrip("/").split("/")[-1]
+
         info = self._get_info()
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
+        if self.external:
+            self.security = self.external.security(self.dask_cluster_id)
+        else:
+            self.security = Security()
+
         try:
             self.register_default_plugin()
         except Exception as e:  # pylint: disable=broad-except
@@ -137,6 +134,7 @@ class SaturnCluster(SpecCluster):
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
+        external_connection: Optional[ExternalConnection] = None,
     ) -> "SaturnCluster":
         """Return a SaturnCluster
 
@@ -147,7 +145,11 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         log.info("Resetting cluster.")
-        url = urljoin(_get_base_url(), "api/dask_clusters/reset")
+        if external_connection is None:
+            settings = Settings()
+        else:
+            settings = external_connection.settings
+        url = urljoin(settings.url, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
@@ -159,10 +161,10 @@ class SaturnCluster(SpecCluster):
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
-        response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
+        response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
-        return cls(**cluster_config)
+        return cls(**cluster_config, external_connection=external_connection)
 
     @property
     def status(self) -> Optional[str]:
@@ -172,7 +174,7 @@ class SaturnCluster(SpecCluster):
         if self.cluster_url is None:
             return "closed"
         url = urljoin(self.cluster_url, "status")
-        response = requests.get(url, headers=_get_headers())
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             return self._get_pod_status()
         return response.json()["status"]
@@ -181,7 +183,7 @@ class SaturnCluster(SpecCluster):
         """
         Status of the KubeCluster pod.
         """
-        response = requests.get(self.cluster_url[:-1], headers=_get_headers())
+        response = requests.get(self.cluster_url[:-1], headers=self.settings.headers)
         if response.ok:
             return response.json()["status"]
         else:
@@ -217,7 +219,7 @@ class SaturnCluster(SpecCluster):
         ValueError if the scheduler is in a bad state.
         """
         url = urljoin(self.cluster_url, "scheduler_info")
-        response = requests.get(url, headers=_get_headers())
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             if self._get_pod_status() in ["error", "closed", "stopped"]:
                 for pc in self.periodic_callbacks.values():
@@ -243,7 +245,10 @@ class SaturnCluster(SpecCluster):
         For documentation on this method's parameters, see
         ``help(SaturnCluster)``.
         """
-        url = urljoin(_get_base_url(), "api/dask_clusters")
+        url = urljoin(self.settings.url, "api/dask_clusters")
+        url_query = ""
+        if self.external:
+            url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
         cluster_config = {
@@ -254,13 +259,19 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+        if self.external:
+            cluster_config["project_id"] = self.external.project_id
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
-            response = requests.post(url, data=json.dumps(cluster_config), headers=_get_headers())
+            response = requests.post(
+                url + url_query,
+                data=json.dumps(cluster_config),
+                headers=self.settings.headers,
+            )
             if not response.ok:
                 raise ValueError(response.reason)
             data = response.json()
@@ -273,7 +284,8 @@ class SaturnCluster(SpecCluster):
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":
-                self.cluster_url = f"{url}/{data['id']}/"
+                self.dask_cluster_id = data["id"]
+                self.cluster_url = f"{url}/{self.dask_cluster_id}/"
                 log.info("Cluster is ready")
                 break
             else:
@@ -288,13 +300,15 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
-        with get_client(self.scheduler_address) as client:
+        with Client(self) as client:
             output = client.register_worker_plugin(SaturnSetup())
             log.info(output)
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
-        response = requests.get(url, headers=_get_headers())
+        if self.external:
+            url += "?is_external=true"
+        response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
         return response.json()
@@ -306,7 +320,7 @@ class SaturnCluster(SpecCluster):
         :param n: number of workers to scale to.
         """
         url = urljoin(self.cluster_url, "scale")
-        response = requests.post(url, json.dumps({"n": n}), headers=_get_headers())
+        response = requests.post(url, json.dumps({"n": n}), headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
 
@@ -314,7 +328,9 @@ class SaturnCluster(SpecCluster):
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
         url = urljoin(self.cluster_url, "adapt")
         response = requests.post(
-            url, json.dumps({"minimum": minimum, "maximum": maximum}), headers=_get_headers()
+            url,
+            json.dumps({"minimum": minimum, "maximum": maximum}),
+            headers=self.settings.headers,
         )
         if not response.ok:
             raise ValueError(response.reason)
@@ -324,7 +340,7 @@ class SaturnCluster(SpecCluster):
         Defines what should be done when closing the cluster.
         """
         url = urljoin(self.cluster_url, "close")
-        response = requests.post(url, headers=_get_headers())
+        response = requests.post(url, headers=self.settings.headers)
         if not response.ok:
             raise ValueError(response.reason)
         for pc in self.periodic_callbacks.values():
@@ -368,19 +384,26 @@ class SaturnCluster(SpecCluster):
             self.close()
 
 
-def _options() -> Dict[str, Any]:
-    url = urljoin(_get_base_url(), "api/dask_clusters/info")
-    response = requests.get(url, headers=_get_headers())
+def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[str, Any]:
+    if external_connection is None:
+        settings = Settings()
+    else:
+        settings = external_connection.settings
+    url = urljoin(settings.url, "api/dask_clusters/info")
+    response = requests.get(url, headers=settings.headers)
     if not response.ok:
         raise ValueError(response.reason)
     return response.json()["server_options"]
 
 
-def list_sizes() -> List[str]:
+def list_sizes(external_connection: Optional[ExternalConnection] = None) -> List[str]:
     """Return a list of valid size options for worker_size and scheduler size."""
-    return [size["name"] for size in _options()["size"]]
+    return [size["name"] for size in _options(external_connection=external_connection)["size"]]
 
 
-def describe_sizes() -> Dict[str, str]:
+def describe_sizes(external_connection: Optional[ExternalConnection] = None) -> Dict[str, str]:
     """Return a dict of size options with a description."""
-    return {size["name"]: size["display"] for size in _options()["size"]}
+    return {
+        size["name"]: size["display"]
+        for size in _options(external_connection=external_connection)["size"]
+    }

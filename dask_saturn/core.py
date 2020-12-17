@@ -9,7 +9,6 @@ import os
 import json
 import logging
 
-from sys import stdout
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -26,15 +25,7 @@ from .plugins import SaturnSetup
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 1200
 
-logfmt = "[%(asctime)s] %(levelname)s - %(name)s | %(message)s"
-datefmt = "%Y-%m-%d %H:%M:%S"
-
 log = logging.getLogger("dask-saturn")
-log.setLevel(logging.INFO)
-handler = logging.StreamHandler(stream=stdout)
-handler.setLevel(logging.INFO)
-handler.setFormatter(logging.Formatter(logfmt, datefmt))
-log.addHandler(handler)
 
 
 def _get_base_url():

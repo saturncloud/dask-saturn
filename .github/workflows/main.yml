@@ -43,3 +43,4 @@ jobs:
         run: |
           python setup.py sdist
           pip install dist/dask-saturn*.tar.gz
+          python -c "from dask_saturn import SaturnCluster"

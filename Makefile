@@ -8,6 +8,6 @@ format:
 
 .PHONY: lint
 lint:
-	flake8 --count --exclude versioneer.py .
+	flake8 --count .
 	black --check --diff .
 	pylint dask_saturn/

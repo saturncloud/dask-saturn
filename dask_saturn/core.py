@@ -68,6 +68,12 @@ class SaturnCluster(SpecCluster):
     """
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
+    def __await__(self):
+        async def _():
+            pass
+
+        return _().__await__()
+
     def __init__(
         self,
         *args,

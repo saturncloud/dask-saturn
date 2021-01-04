@@ -67,13 +67,6 @@ class SaturnCluster(SpecCluster):
         outside of the Saturn installation.
     """
 
-    # pylint: disable=unused-argument
-    def __await__(self):
-        async def _():
-            pass
-
-        return _().__await__()
-
     def __init__(
         self,
         *args,
@@ -131,6 +124,13 @@ class SaturnCluster(SpecCluster):
                 f"Registering default plugin failed: {e} Hint: you might "
                 "have a different dask-saturn version on your dask cluster."
             )
+
+    # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
+    def __await__(self):
+        async def _():
+            pass
+
+        return _().__await__()
 
     @classmethod
     def reset(

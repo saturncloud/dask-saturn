@@ -67,7 +67,7 @@ class SaturnCluster(SpecCluster):
         outside of the Saturn installation.
     """
 
-    # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
+    # pylint: disable=unused-argument
     def __await__(self):
         async def _():
             pass

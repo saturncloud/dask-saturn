@@ -67,6 +67,7 @@ class SaturnCluster(SpecCluster):
         outside of the Saturn installation.
     """
 
+    # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
     def __init__(
         self,
         *args,
@@ -125,7 +126,6 @@ class SaturnCluster(SpecCluster):
                 "have a different dask-saturn version on your dask cluster."
             )
 
-    # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
     def __await__(self):
         async def _():
             pass

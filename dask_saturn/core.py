@@ -126,6 +126,7 @@ class SaturnCluster(SpecCluster):
                 "have a different dask-saturn version on your dask cluster."
             )
 
+    # pylint: disable=unused-argument
     def __await__(self):
         async def _():
             pass

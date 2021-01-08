@@ -169,7 +169,7 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
         try:
             response.raise_for_status()
-        except HTTPError as err:
+        except HTTPError:
             raise ValueError(response.json()["message"])
         return cls(**cluster_config, external_connection=external_connection)
 

@@ -169,7 +169,7 @@ class SaturnCluster(SpecCluster):
         try:
             response.raise_for_status()
         except HTTPError as err:
-            raise HTTPError(response.status_code, response.json()["message"]) from err
+            raise ValueError(response.json()["message"])
         return cls(**cluster_config, external_connection=external_connection)
 
     @property
@@ -282,8 +282,8 @@ class SaturnCluster(SpecCluster):
             )
             try:
                 response.raise_for_status()
-            except HTTPError as err:
-                raise HTTPError(response.status_code, response.json()["message"]) from err
+            except HTTPError:
+                raise ValueError(response.json()["message"])
             data = response.json()
             warnings = data.get("warnings")
             if warnings is not None:
@@ -321,8 +321,8 @@ class SaturnCluster(SpecCluster):
         response = requests.get(url, headers=self.settings.headers)
         try:
             response.raise_for_status()
-        except HTTPError as err:
-            raise HTTPError(response.status_code, response.json()["message"]) from err
+        except HTTPError:
+            raise ValueError(response.json()["message"])
         return response.json()
 
     def scale(self, n: int) -> None:
@@ -335,8 +335,8 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, json.dumps({"n": n}), headers=self.settings.headers)
         try:
             response.raise_for_status()
-        except HTTPError as err:
-            raise HTTPError(response.status_code, response.json()["message"]) from err
+        except HTTPError:
+            raise ValueError(response.json()["message"])
 
     def adapt(self, minimum: int, maximum: int) -> None:
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
@@ -348,8 +348,8 @@ class SaturnCluster(SpecCluster):
         )
         try:
             response.raise_for_status()
-        except HTTPError as err:
-            raise HTTPError(response.status_code, response.json()["message"]) from err
+        except HTTPError:
+            raise ValueError(response.json()["message"])
 
     def close(self) -> None:
         """
@@ -359,8 +359,8 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, headers=self.settings.headers)
         try:
             response.raise_for_status()
-        except HTTPError as err:
-            raise HTTPError(response.status_code, response.json()["message"]) from err
+        except HTTPError:
+            raise ValueError(response.json()["message"])
         for pc in self.periodic_callbacks.values():
             pc.stop()
 
@@ -435,8 +435,8 @@ def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[s
     response = requests.get(url, headers=settings.headers)
     try:
         response.raise_for_status()
-    except HTTPError as err:
-        raise HTTPError(response.status_code, response.json()["message"]) from err
+    except HTTPError:
+        raise ValueError(response.json()["message"])
     return response.json()["server_options"]
 
 

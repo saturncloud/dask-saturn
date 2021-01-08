@@ -129,6 +129,12 @@ class SaturnCluster(SpecCluster):
                 "have a different dask-saturn version on your dask cluster."
             )
 
+    def __await__(self):
+        async def _():
+            pass
+
+        return _().__await__()
+
     @classmethod
     def reset(
         cls,

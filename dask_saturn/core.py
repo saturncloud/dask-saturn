@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
+from requests.exceptions import HTTPError
 
 from distributed import Client, SpecCluster
 from distributed.security import Security
@@ -66,6 +67,8 @@ class SaturnCluster(SpecCluster):
     :param external_connection: Configuration for connecting to Saturn Dask from
         outside of the Saturn installation.
     """
+
+    _sizes = None
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
     def __init__(
@@ -163,8 +166,10 @@ class SaturnCluster(SpecCluster):
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
         response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
-        if not response.ok:
-            raise ValueError(response.reason)
+        try:
+            response.raise_for_status()
+        except HTTPError as err:
+            raise HTTPError(response.status_code, response.json()["message"]) from err
         return cls(**cluster_config, external_connection=external_connection)
 
     @property
@@ -226,7 +231,7 @@ class SaturnCluster(SpecCluster):
                 for pc in self.periodic_callbacks.values():
                     pc.stop()
                 raise ValueError("Cluster is not running.")
-            raise ValueError(response.reason)
+            raise ValueError(response.json()["message"])
         return response.json()
 
     # pylint: disable=invalid-overridden-method
@@ -252,6 +257,8 @@ class SaturnCluster(SpecCluster):
             url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
+        self._validate_sizes(worker_size, scheduler_size)
+
         cluster_config = {
             "n_workers": n_workers,
             "worker_size": worker_size,
@@ -269,12 +276,12 @@ class SaturnCluster(SpecCluster):
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
             response = requests.post(
-                url + url_query,
-                data=json.dumps(cluster_config),
-                headers=self.settings.headers,
+                url + url_query, data=json.dumps(cluster_config), headers=self.settings.headers,
             )
-            if not response.ok:
-                raise ValueError(response.reason)
+            try:
+                response.raise_for_status()
+            except HTTPError as err:
+                raise HTTPError(response.status_code, response.json()["message"]) from err
             data = response.json()
             warnings = data.get("warnings")
             if warnings is not None:
@@ -310,8 +317,10 @@ class SaturnCluster(SpecCluster):
         if self.external:
             url += "?is_external=true"
         response = requests.get(url, headers=self.settings.headers)
-        if not response.ok:
-            raise ValueError(response.reason)
+        try:
+            response.raise_for_status()
+        except HTTPError as err:
+            raise HTTPError(response.status_code, response.json()["message"]) from err
         return response.json()
 
     def scale(self, n: int) -> None:
@@ -322,8 +331,10 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.cluster_url, "scale")
         response = requests.post(url, json.dumps({"n": n}), headers=self.settings.headers)
-        if not response.ok:
-            raise ValueError(response.reason)
+        try:
+            response.raise_for_status()
+        except HTTPError as err:
+            raise HTTPError(response.status_code, response.json()["message"]) from err
 
     def adapt(self, minimum: int, maximum: int) -> None:
         """Adapt cluster to have between ``minimum`` and ``maximum`` workers"""
@@ -333,8 +344,10 @@ class SaturnCluster(SpecCluster):
             json.dumps({"minimum": minimum, "maximum": maximum}),
             headers=self.settings.headers,
         )
-        if not response.ok:
-            raise ValueError(response.reason)
+        try:
+            response.raise_for_status()
+        except HTTPError as err:
+            raise HTTPError(response.status_code, response.json()["message"]) from err
 
     def close(self) -> None:
         """
@@ -342,8 +355,10 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=self.settings.headers)
-        if not response.ok:
-            raise ValueError(response.reason)
+        try:
+            response.raise_for_status()
+        except HTTPError as err:
+            raise HTTPError(response.status_code, response.json()["message"]) from err
         for pc in self.periodic_callbacks.values():
             pc.stop()
 
@@ -384,6 +399,28 @@ class SaturnCluster(SpecCluster):
         if self.autoclose:
             self.close()
 
+    # pylint: disable=access-member-before-definition
+    def _validate_sizes(
+        self, worker_size: Optional[str] = None, scheduler_size: Optional[str] = None,
+    ):
+        """Validate the options provided"""
+        if self._sizes is None:
+            self._sizes = list_sizes(self.external)
+        errors = []
+        if worker_size is not None:
+            if worker_size not in self._sizes:
+                errors.append(
+                    f"Proposed worker_size: {worker_size} is not a valid option. "
+                    f"Options are: {self._sizes}."
+                )
+            if scheduler_size not in self._sizes:
+                errors.append(
+                    f"Proposed scheduler_size: {scheduler_size} is not a valid option. "
+                    f"Options are: {self._sizes}."
+                )
+        if len(errors) > 0:
+            raise ValueError(" ".join(errors))
+
 
 def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[str, Any]:
     if external_connection is None:
@@ -392,8 +429,10 @@ def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[s
         settings = external_connection.settings
     url = urljoin(settings.url, "api/dask_clusters/info")
     response = requests.get(url, headers=settings.headers)
-    if not response.ok:
-        raise ValueError(response.reason)
+    try:
+        response.raise_for_status()
+    except HTTPError as err:
+        raise HTTPError(response.status_code, response.json()["message"]) from err
     return response.json()["server_options"]
 
 

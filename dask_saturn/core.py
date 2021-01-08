@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
-from requests.exceptions import HTTPError
 
 from distributed import Client, SpecCluster
 from distributed.security import Security
@@ -167,9 +166,7 @@ class SaturnCluster(SpecCluster):
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
         response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
-        try:
-            response.raise_for_status()
-        except HTTPError:
+        if not response.ok:
             raise ValueError(response.json()["message"])
         return cls(**cluster_config, external_connection=external_connection)
 
@@ -281,9 +278,7 @@ class SaturnCluster(SpecCluster):
                 data=json.dumps(cluster_config),
                 headers=self.settings.headers,
             )
-            try:
-                response.raise_for_status()
-            except HTTPError:
+            if not response.ok:
                 raise ValueError(response.json()["message"])
             data = response.json()
             warnings = data.get("warnings")
@@ -320,9 +315,7 @@ class SaturnCluster(SpecCluster):
         if self.external:
             url += "?is_external=true"
         response = requests.get(url, headers=self.settings.headers)
-        try:
-            response.raise_for_status()
-        except HTTPError:
+        if not response.ok:
             raise ValueError(response.json()["message"])
         return response.json()
 
@@ -334,9 +327,7 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.cluster_url, "scale")
         response = requests.post(url, json.dumps({"n": n}), headers=self.settings.headers)
-        try:
-            response.raise_for_status()
-        except HTTPError:
+        if not response.ok:
             raise ValueError(response.json()["message"])
 
     def adapt(self, minimum: int, maximum: int) -> None:
@@ -347,9 +338,7 @@ class SaturnCluster(SpecCluster):
             json.dumps({"minimum": minimum, "maximum": maximum}),
             headers=self.settings.headers,
         )
-        try:
-            response.raise_for_status()
-        except HTTPError:
+        if not response.ok:
             raise ValueError(response.json()["message"])
 
     def close(self) -> None:
@@ -358,9 +347,7 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.cluster_url, "close")
         response = requests.post(url, headers=self.settings.headers)
-        try:
-            response.raise_for_status()
-        except HTTPError:
+        if not response.ok:
             raise ValueError(response.json()["message"])
         for pc in self.periodic_callbacks.values():
             pc.stop()
@@ -434,9 +421,7 @@ def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[s
         settings = external_connection.settings
     url = urljoin(settings.url, "api/dask_clusters/info")
     response = requests.get(url, headers=settings.headers)
-    try:
-        response.raise_for_status()
-    except HTTPError:
+    if not response.ok:
         raise ValueError(response.json()["message"])
     return response.json()["server_options"]
 

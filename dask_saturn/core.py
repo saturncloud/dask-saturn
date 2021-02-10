@@ -411,6 +411,7 @@ class SaturnCluster(SpecCluster):
                     f"Proposed worker_size: {worker_size} is not a valid option. "
                     f"Options are: {self._sizes}."
                 )
+        if scheduler_size is not None:
             if scheduler_size not in self._sizes:
                 errors.append(
                     f"Proposed scheduler_size: {scheduler_size} is not a valid option. "

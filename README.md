@@ -87,9 +87,9 @@ To connect to your Dask cluster from outside of Saturn, you need to first define
 The ExternalConnection requires `project_id`, `base_url`, and `saturn_token`. To get these you'll need to go saturn in your browser. Go to the project where you want to connect a dask_cluser.
 
 The url will be something like:
-`https://app.community.saturnenterprise.io/dash/projects/c33a79923a5741a9b8762a23c86d96ca`
+`https://app.demo.saturnenterprise.io/dash/projects/c33a79923a5741a9b8762a23c86d96ca`
 
-The first part of this url is your `base_url` in this case it's `https://app.community.saturnenterprise.io` the last part is the `project_id` in this case: `82911a57be5b4748b2b6c13bf37e9199`
+The first part of this url is your `base_url` in this case it's `https://app.demo.saturnenterprise.io` the last part is the `project_id` in this case: `82911a57be5b4748b2b6c13bf37e9199`
 
 The last thing to get from the browser is you saturn_token. You can find that by going to `https://app.demo.saturnenterprise.io/api/user/token`. That token is private so don't share it with anyone! It'll be a something like `351e6f2d40bf4d15a0009fc086c602df`
 

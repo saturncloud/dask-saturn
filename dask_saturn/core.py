@@ -280,9 +280,7 @@ class SaturnCluster(SpecCluster):
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
             response = requests.post(
-                url + url_query,
-                data=json.dumps(cluster_config),
-                headers=self.settings.headers,
+                url + url_query, data=json.dumps(cluster_config), headers=self.settings.headers,
             )
             if not response.ok:
                 raise ValueError(response.json()["message"])
@@ -312,9 +310,18 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
+        outputs = {}
         with Client(self) as client:
             output = client.register_worker_plugin(SaturnSetup())
-            log.info(output)
+            outputs.update(output)
+        if "ok" in outputs.values():
+            log.info("Success!")
+        elif "repeat" in output.values():
+            log.info("Success!")
+        elif len(output) == 0:
+            log.warning("No workers started up.")
+        else:
+            log.warning("Registering default plugins failed. Please check logs for more info.")
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
@@ -397,9 +404,7 @@ class SaturnCluster(SpecCluster):
 
     # pylint: disable=access-member-before-definition
     def _validate_sizes(
-        self,
-        worker_size: Optional[str] = None,
-        scheduler_size: Optional[str] = None,
+        self, worker_size: Optional[str] = None, scheduler_size: Optional[str] = None,
     ):
         """Validate the options provided"""
         if self._sizes is None:

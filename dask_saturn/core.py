@@ -314,11 +314,12 @@ class SaturnCluster(SpecCluster):
         with Client(self) as client:
             output = client.register_worker_plugin(SaturnSetup())
             outputs.update(output)
-        if "ok" in outputs.values():
+        output_statuses = [v["status"] for v in outputs.values()]
+        if "OK" in output_statuses:
             log.info("Success!")
-        elif "repeat" in output.values():
+        elif "repeat" in output_statuses:
             log.info("Success!")
-        elif len(output) == 0:
+        elif len(output_statuses) == 0:
             log.warning("No workers started up.")
         else:
             log.warning("Registering default plugins failed. Please check logs for more info.")

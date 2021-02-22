@@ -312,9 +312,19 @@ class SaturnCluster(SpecCluster):
     def register_default_plugin(self):
         """Register the default SaturnSetup plugin to all workers."""
         log.info("Registering default plugins")
+        outputs = {}
         with Client(self) as client:
             output = client.register_worker_plugin(SaturnSetup())
-            log.info(output)
+            outputs.update(output)
+        output_statuses = [v["status"] for v in outputs.values()]
+        if "OK" in output_statuses:
+            log.info("Success!")
+        elif "repeat" in output_statuses:
+            log.info("Success!")
+        elif len(output_statuses) == 0:
+            log.warning("No workers started up.")
+        else:
+            log.warning("Registering default plugins failed. Please check logs for more info.")
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")

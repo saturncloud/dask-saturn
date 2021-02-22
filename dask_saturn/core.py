@@ -280,7 +280,9 @@ class SaturnCluster(SpecCluster):
         logged_warnings: Dict[str, bool] = {}
         while self.cluster_url is None:
             response = requests.post(
-                url + url_query, data=json.dumps(cluster_config), headers=self.settings.headers,
+                url + url_query,
+                data=json.dumps(cluster_config),
+                headers=self.settings.headers,
             )
             if not response.ok:
                 raise ValueError(response.json()["message"])
@@ -405,7 +407,9 @@ class SaturnCluster(SpecCluster):
 
     # pylint: disable=access-member-before-definition
     def _validate_sizes(
-        self, worker_size: Optional[str] = None, scheduler_size: Optional[str] = None,
+        self,
+        worker_size: Optional[str] = None,
+        scheduler_size: Optional[str] = None,
     ):
         """Validate the options provided"""
         if self._sizes is None:

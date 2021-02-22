@@ -80,6 +80,73 @@ You can also call this without instantiating the cluster first:
 cluster = SaturnCluster.reset(n_workers=3)
 ```
 
+## Connect from outside of Saturn
+
+To connect to your Dask cluster from outside of Saturn, you need to first define an ExternalConnection.
+
+The ExternalConnection requires `project_id`, `base_url`, and `saturn_token`. To get these you'll need to go saturn in your browser. Go to the project where you want to connect a dask_cluser.
+
+The url will be something like:
+`https://app.demo.saturnenterprise.io/dash/projects/c33a79923a5741a9b8762a23c86d96ca`
+
+The first part of this url is your `base_url` in this case it's `https://app.demo.saturnenterprise.io` the last part is the `project_id` in this case: `82911a57be5b4748b2b6c13bf37e9199`
+
+The last thing to get from the browser is you saturn_token. You can find that by going to `https://app.demo.saturnenterprise.io/api/user/token`. That token is private so don't share it with anyone! It'll be a something like `351e6f2d40bf4d15a0009fc086c602df`
+
+
+```python
+from dask_saturn import SaturnCluster, ExternalConnection
+from distributed import Client
+
+conn = ExternalConnection(
+    project_id="82911a57be5b4748b2b6c13bf37e9199",
+    base_url="https://app.demo.saturnenterprise.io",
+    saturn_token="351e6f2d40bf4d15a0009fc086c602df"
+)
+cluster = SaturnCluster(external_connection=conn)
+client = Client(cluster)
+client
+```
+
+By default, you'll get one worker, but you can change that using the `n_workers` option. Similarly you can override the scheduler and worker hardware settings with `scheduler_size`, `worker_size`. You can display the available size options using `describe_sizes()`:
+
+```python
+>>> describe_sizes(conn)
+{'medium': 'Medium - 2 cores - 4 GB RAM',
+ 'large': 'Large - 2 cores - 16 GB RAM',
+ 'xlarge': 'XLarge - 4 cores - 32 GB RAM',
+ '2xlarge': '2XLarge - 8 cores - 64 GB RAM',
+ '4xlarge': '4XLarge - 16 cores - 128 GB RAM',
+ '8xlarge': '8XLarge - 32 cores - 256 GB RAM',
+ '12xlarge': '12XLarge - 48 cores - 384 GB RAM',
+ '16xlarge': '16XLarge - 64 cores - 512 GB RAM',
+ 'g4dnxlarge': 'T4-XLarge - 4 cores - 16 GB RAM - 1 GPU',
+ 'g4dn4xlarge': 'T4-4XLarge - 16 cores - 64 GB RAM - 1 GPU',
+ 'g4dn8xlarge': 'T4-8XLarge - 32 cores - 128 GB RAM - 1 GPU',
+ 'p32xlarge': 'V100-2XLarge - 8 cores - 61 GB RAM - 1 GPU',
+ 'p38xlarge': 'V100-8XLarge - 32 cores - 244 GB RAM - 4 GPU',
+ 'p316xlarge': 'V100-16XLarge - 64 cores - 488 GB RAM - 8 GPU'}
+```
+
+Here's an example:
+
+```python
+cluster = SaturnCluster(
+    external_connection=conn,
+    scheduler_size="large",
+    worker_size="2xlarge",
+    n_workers=3,
+)
+client = Client(cluster)
+client
+```
+
+When you are done working with the dask cluster make sure to shut it down:
+
+```python
+cluster.close()
+```
+
 ## Sync files to workers
 
 When working with distributed dask clusters, the workers don't have access to the same file system as your client does. So you will see files in your jupyter server that aren't available on the workers. To move files to the workers you can use the `RegisterFiles` plugin and call `sync_files` on any path that you want to update on the workers.

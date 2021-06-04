@@ -27,7 +27,7 @@ class Settings:
                     "This version of dask-saturn is incompatible with your Saturn version. "
                     "Downgrade dask-saturn to `0.2.3`: `pip install dask_saturn==0.2.3`"
                 )
-                raise RuntimeError(err_msg)
+                raise RuntimeError(err_msg) from err
 
             err_msg = "Missing required environment variable SATURN_BASE_URL."
             raise RuntimeError(err_msg) from err
@@ -44,6 +44,7 @@ class Settings:
 
     @property
     def is_external(self):
+        """Whether the client environment is external to Saturn"""
         return os.environ.get("SATURN_IS_INTERNAL", "false").lower() == "false"
 
     @property

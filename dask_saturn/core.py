@@ -85,7 +85,7 @@ class SaturnCluster(SpecCluster):
     ):
         if "external_connection" in kwargs:
             raise DeprecationWarning(
-                "Passing external_connection as a key word argument is no longer supported."
+                "Passing external_connection as a key word argument is no longer supported. "
                 "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
                 "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
                 "connection will be automatically set up."

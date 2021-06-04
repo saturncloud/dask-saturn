@@ -18,6 +18,11 @@ from .settings import Settings
 
 
 class ExternalConnection:
+    """
+    DEPRECATED: Stores settings for connecting to Saturn from an external location, and manages
+    TLS certificates for communicating with the Dask Scheduler.
+    """
+
     def __init__(self, *args, **kwargs):
         raise DeprecationWarning(
             "ExternalConnection is no longer supported. "

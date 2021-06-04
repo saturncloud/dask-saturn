@@ -17,6 +17,15 @@ class Settings:
         try:
             self.SATURN_BASE_URL = os.environ["SATURN_BASE_URL"]
         except KeyError as err:
+            if os.environ.get("BASE_URL") is not None:
+                # if ``BASE_URL`` is set and ``SATURN_BASE_URL`` isn't, it's an old
+                # version of Saturn that is incompatible with this version of dask_saturn.
+                err_msg = (
+                    "This version of dask-saturn is incompatible with your Saturn version. "
+                    "Downgrade dask-saturn to `0.2.3`: `pip install dask_saturn==0.2.3`"
+                )
+                raise RuntimeError(err_msg)
+
             err_msg = "Missing required environment variable SATURN_BASE_URL."
             raise RuntimeError(err_msg) from err
 

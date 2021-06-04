@@ -18,7 +18,7 @@ from distributed.security import Security
 from tornado.ioloop import PeriodicCallback
 
 from .backoff import ExpBackoff
-from .external import security
+from .external import security, ExternalConnection  # noqa  # pylint: disable=unused-import
 from .plugins import SaturnSetup
 from .settings import Settings
 
@@ -83,6 +83,14 @@ class SaturnCluster(SpecCluster):
         autoclose: bool = False,
         **kwargs,
     ):
+        if "external_connection" in kwargs:
+            raise DeprecationWarning(
+                "Passing external_connection as a key word argument is no longer supported."
+                "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
+                "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
+                "connection will be automatically set up."
+            )
+
         self.settings = Settings()
 
         if cluster_url is None:

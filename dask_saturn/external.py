@@ -17,6 +17,16 @@ from urllib.parse import urljoin
 from .settings import Settings
 
 
+class ExternalConnection:
+    def __init__(self, *args, **kwargs):
+        raise DeprecationWarning(
+            "ExternalConnection is no longer supported. "
+            "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
+            "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
+            "connection will be automatically set up."
+        )
+
+
 def _client_tls(
     settings: Settings, dask_cluster_id: str
 ) -> (rsa.RSAPrivateKey, x509.Certificate, x509.Certificate):

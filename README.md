@@ -80,38 +80,10 @@ You can also call this without instantiating the cluster first:
 cluster = SaturnCluster.reset(n_workers=3)
 ```
 
-## Connect from outside of Saturn
-
-To connect to your Dask cluster from outside of Saturn, you need to first define an ExternalConnection.
-
-The ExternalConnection requires `project_id`, `base_url`, and `saturn_token`. To get these you'll need to go saturn in your browser. Go to the project where you want to connect a dask_cluser.
-
-The url will be something like:
-`https://app.demo.saturnenterprise.io/dash/projects/c33a79923a5741a9b8762a23c86d96ca`
-
-The first part of this url is your `base_url` in this case it's `https://app.demo.saturnenterprise.io` the last part is the `project_id` in this case: `82911a57be5b4748b2b6c13bf37e9199`
-
-The last thing to get from the browser is you saturn_token. You can find that by going to `https://app.demo.saturnenterprise.io/api/user/token`. That token is private so don't share it with anyone! It'll be a something like `351e6f2d40bf4d15a0009fc086c602df`
-
-
-```python
-from dask_saturn import SaturnCluster, ExternalConnection
-from distributed import Client
-
-conn = ExternalConnection(
-    project_id="82911a57be5b4748b2b6c13bf37e9199",
-    base_url="https://app.demo.saturnenterprise.io",
-    saturn_token="351e6f2d40bf4d15a0009fc086c602df"
-)
-cluster = SaturnCluster(external_connection=conn)
-client = Client(cluster)
-client
-```
-
 By default, you'll get one worker, but you can change that using the `n_workers` option. Similarly you can override the scheduler and worker hardware settings with `scheduler_size`, `worker_size`. You can display the available size options using `describe_sizes()`:
 
 ```python
->>> describe_sizes(conn)
+>>> describe_sizes()
 {'medium': 'Medium - 2 cores - 4 GB RAM',
  'large': 'Large - 2 cores - 16 GB RAM',
  'xlarge': 'XLarge - 4 cores - 32 GB RAM',
@@ -132,11 +104,35 @@ Here's an example:
 
 ```python
 cluster = SaturnCluster(
-    external_connection=conn,
     scheduler_size="large",
     worker_size="2xlarge",
     n_workers=3,
 )
+client = Client(cluster)
+client
+```
+
+## Connect from outside of Saturn
+
+To connect to your Dask cluster from outside of Saturn, you need to set two environment variables: ``SATURN_TOKEN`` and ``SATURN_BASE_URL``.
+
+To get the values for these you'll need to go Saturn in your browser. Go to where you want to connect a Dask cluster. There will be a button that says:
+"Connect Externally". Clicking that will open a modal with the values for ``SATURN_TOKEN`` and ``SATURN_BASE_URL``
+
+Remember - that token is private so don't share it with anyone! It'll be a something like `351e6f2d40bf4d15a0009fc086c602df`
+
+```sh
+export SATURN_BASE_URL="https://app.demo.saturnenterprise.io"
+export SATURN_TOKEN="351e6f2d40bf4d15a0009fc086c602df"
+```
+
+After you have set the environment variables, you can open a Python session and connect to your Dask cluster just as you would inside of Saturn:
+
+```python
+from dask_saturn import SaturnCluster
+from distributed import Client
+
+cluster = SaturnCluster()
 client = Client(cluster)
 client
 ```
@@ -198,6 +194,6 @@ make conda-update
 Set environment variables to run dask-saturn with a local atlas server:
 
 ```sh
-export BASE_URL=http://dev.localtest.me:8888/
+export SATURN_BASE_URL=http://dev.localtest.me:8888/
 export SATURN_TOKEN=<JUPYTER_SERVER_SATURN_TOKEN>
 ```

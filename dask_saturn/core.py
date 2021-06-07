@@ -8,7 +8,7 @@ for details on the parent class.
 import json
 import logging
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -18,7 +18,7 @@ from distributed.security import Security
 from tornado.ioloop import PeriodicCallback
 
 from .backoff import ExpBackoff
-from .external import ExternalConnection
+from .external import _security, ExternalConnection  # noqa  # pylint: disable=unused-import
 from .plugins import SaturnSetup
 from .settings import Settings
 
@@ -63,8 +63,6 @@ class SaturnCluster(SpecCluster):
         when its ``__exit__()`` method is called. By default, this is ``False``. Set
         this parameter to ``True`` if you want to use it in a context manager which
         closes the cluster when it exits.
-    :param external_connection: Configuration for connecting to Saturn Dask from
-        outside of the Saturn installation.
     """
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
@@ -83,18 +81,17 @@ class SaturnCluster(SpecCluster):
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
         autoclose: bool = False,
-        external_connection: Optional[Union[Dict[str, str], ExternalConnection]] = None,
         **kwargs,
     ):
-        if external_connection:
-            if isinstance(external_connection, dict):
-                self.external = ExternalConnection(**external_connection)
-            else:
-                self.external = external_connection
-            self.settings = self.external.settings
-        else:
-            self.external = None
-            self.settings = Settings()
+        if "external_connection" in kwargs:
+            raise RuntimeError(
+                "Passing external_connection as a key word argument is no longer supported. "
+                "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
+                "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
+                "connection will be automatically set up."
+            )
+
+        self.settings = Settings()
 
         if cluster_url is None:
             self._start(
@@ -116,8 +113,8 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
-        if self.external:
-            self.security = self.external.security(self.dask_cluster_id)
+        if self.settings.is_external:
+            self.security = _security(self.settings, self.dask_cluster_id)
         else:
             self.security = Security()
 
@@ -144,7 +141,6 @@ class SaturnCluster(SpecCluster):
         scheduler_size: Optional[str] = None,
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
-        external_connection: Optional[ExternalConnection] = None,
     ) -> "SaturnCluster":
         """Return a SaturnCluster
 
@@ -155,10 +151,7 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         log.info("Resetting cluster.")
-        if external_connection is None:
-            settings = Settings()
-        else:
-            settings = external_connection.settings
+        settings = Settings()
         url = urljoin(settings.url, "api/dask_clusters/reset")
         cluster_config = {
             "n_workers": n_workers,
@@ -174,7 +167,7 @@ class SaturnCluster(SpecCluster):
         response = requests.post(url, data=json.dumps(cluster_config), headers=settings.headers)
         if not response.ok:
             raise ValueError(response.json()["message"])
-        return cls(**cluster_config, external_connection=external_connection)
+        return cls(**cluster_config)
 
     @property
     def status(self) -> Optional[str]:
@@ -257,7 +250,7 @@ class SaturnCluster(SpecCluster):
         """
         url = urljoin(self.settings.url, "api/dask_clusters")
         url_query = ""
-        if self.external:
+        if self.settings.is_external:
             url_query = "?is_external=true"
         self.cluster_url: Optional[str] = None
 
@@ -271,9 +264,7 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
-        if self.external:
-            cluster_config["project_id"] = self.external.project_id
-        # only send kwargs that are explicity set by user
+        # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
@@ -328,7 +319,7 @@ class SaturnCluster(SpecCluster):
 
     def _get_info(self) -> Dict[str, Any]:
         url = urljoin(self.cluster_url, "info")
-        if self.external:
+        if self.settings.is_external:
             url += "?is_external=true"
         response = requests.get(url, headers=self.settings.headers)
         if not response.ok:
@@ -413,7 +404,7 @@ class SaturnCluster(SpecCluster):
     ):
         """Validate the options provided"""
         if self._sizes is None:
-            self._sizes = list_sizes(self.external)
+            self._sizes = list_sizes()
         errors = []
         if worker_size is not None:
             if worker_size not in self._sizes:
@@ -431,11 +422,8 @@ class SaturnCluster(SpecCluster):
             raise ValueError(" ".join(errors))
 
 
-def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[str, Any]:
-    if external_connection is None:
-        settings = Settings()
-    else:
-        settings = external_connection.settings
+def _options() -> Dict[str, Any]:
+    settings = Settings()
     url = urljoin(settings.url, "api/dask_clusters/info")
     response = requests.get(url, headers=settings.headers)
     if not response.ok:
@@ -443,14 +431,11 @@ def _options(external_connection: Optional[ExternalConnection] = None) -> Dict[s
     return response.json()["server_options"]
 
 
-def list_sizes(external_connection: Optional[ExternalConnection] = None) -> List[str]:
+def list_sizes() -> List[str]:
     """Return a list of valid size options for worker_size and scheduler size."""
-    return [size["name"] for size in _options(external_connection=external_connection)["size"]]
+    return [size["name"] for size in _options()["size"]]
 
 
-def describe_sizes(external_connection: Optional[ExternalConnection] = None) -> Dict[str, str]:
+def describe_sizes() -> Dict[str, str]:
     """Return a dict of size options with a description."""
-    return {
-        size["name"]: size["display"]
-        for size in _options(external_connection=external_connection)["size"]
-    }
+    return {size["name"]: size["display"] for size in _options()["size"]}

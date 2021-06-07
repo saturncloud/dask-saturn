@@ -11,7 +11,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from distributed.security import Security
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from urllib.parse import urljoin
 
 from .settings import Settings
@@ -19,67 +19,61 @@ from .settings import Settings
 
 class ExternalConnection:
     """
-    Stores settings for connecting to Saturn from an external location, and manages
+    DEPRECATED: Stores settings for connecting to Saturn from an external location, and manages
     TLS certificates for communicating with the Dask Scheduler.
     """
 
-    def __init__(
-        self, project_id: str, base_url: Optional[str] = None, saturn_token: Optional[str] = None
-    ):
-        """
-        :param project_id: ID of the project that dask-saturn will connect to
-        :param base_url: Saturn cluster URL. May also be set by the BASE_URL env var.
-        :param saturn_token: User auth token. May also be set by the SATURN_TOKEN env var.
-        """
-        if not project_id:
-            raise ValueError("Invalid ExternalConnection: project_id is required")
-        self.project_id = project_id
-        try:
-            self.settings = Settings(base_url, saturn_token)
-        except Exception as e:
-            raise ValueError(f"Invalid ExternalConnection: {e}") from e
-
-    def _client_tls(
-        self, dask_cluster_id: str
-    ) -> (rsa.RSAPrivateKey, x509.Certificate, x509.Certificate):
-        """
-        Generate an RSA key and certificate signing request. Send the CSR to Saturn to be signed
-        by the Dask cluster CA, and return the key, cert, and CA.
-        """
-        csr, key = _create_csr(f"Dask Client {dask_cluster_id}")
-
-        url = urljoin(self.settings.url, f"/api/dask_clusters/{dask_cluster_id}/csr")
-        resp = requests.post(
-            url,
-            data=_serialize_csr(csr),
-            headers=self.settings.headers,
+    def __init__(self, *args, **kwargs):
+        raise RuntimeError(
+            "ExternalConnection is no longer supported. "
+            "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
+            "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
+            "connection will be automatically set up."
         )
-        if not resp.ok:
-            resp.raise_for_status()
 
-        cert_chain = _deserialize_cert_chain(resp.content)
-        if len(cert_chain) <= 1:
-            raise ValueError("Invalid certificate chain returned from server")
-        cert = cert_chain[0]
-        ca_cert = cert_chain[1]
 
-        return key, cert, ca_cert
+def _client_tls(
+    settings: Settings, dask_cluster_id: str
+) -> (rsa.RSAPrivateKey, x509.Certificate, x509.Certificate):
+    """
+    Generate an RSA key and certificate signing request. Send the CSR to Saturn to be signed
+    by the Dask cluster CA, and return the key, cert, and CA.
+    """
+    csr, key = _create_csr(f"Dask Client {dask_cluster_id}")
 
-    def security(self, dask_cluster_id: str) -> Security:
-        """
-        Return Dask distributed security for connecting to the given dask cluster's scheduler
-        over a public endpoint.
-        """
-        key, cert, ca_cert = self._client_tls(dask_cluster_id)
-        key_contents = _serialize_key(key).decode()
-        cert_contents = _serialize_cert(cert).decode()
-        ca_cert_contents = _serialize_cert(ca_cert).decode()
-        return Security(
-            tls_client_key=key_contents,
-            tls_client_cert=cert_contents,
-            tls_ca_file=ca_cert_contents,
-            require_encryption=True,
-        )
+    url = urljoin(settings.url, f"/api/dask_clusters/{dask_cluster_id}/csr")
+    resp = requests.post(
+        url,
+        data=_serialize_csr(csr),
+        headers=settings.headers,
+    )
+    if not resp.ok:
+        resp.raise_for_status()
+
+    cert_chain = _deserialize_cert_chain(resp.content)
+    if len(cert_chain) <= 1:
+        raise ValueError("Invalid certificate chain returned from server")
+    cert = cert_chain[0]
+    ca_cert = cert_chain[1]
+
+    return key, cert, ca_cert
+
+
+def _security(settings: Settings, dask_cluster_id: str) -> Security:
+    """
+    Return Dask distributed security for connecting to the given dask cluster's scheduler
+    over a public endpoint.
+    """
+    key, cert, ca_cert = _client_tls(settings, dask_cluster_id)
+    key_contents = _serialize_key(key).decode()
+    cert_contents = _serialize_cert(cert).decode()
+    ca_cert_contents = _serialize_cert(ca_cert).decode()
+    return Security(
+        tls_client_key=key_contents,
+        tls_client_cert=cert_contents,
+        tls_ca_file=ca_cert_contents,
+        require_encryption=True,
+    )
 
 
 def _create_csr(

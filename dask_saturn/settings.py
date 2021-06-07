@@ -43,7 +43,7 @@ class Settings:
             raise RuntimeError(err_msg) from err
 
     @property
-    def is_external(self):
+    def is_external(self) -> bool:
         """Whether the client environment is external to Saturn"""
         return os.environ.get("SATURN_IS_INTERNAL", "false").lower() == "false"
 

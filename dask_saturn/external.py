@@ -59,7 +59,7 @@ def _client_tls(
     return key, cert, ca_cert
 
 
-def security(settings: Settings, dask_cluster_id: str) -> Security:
+def _security(settings: Settings, dask_cluster_id: str) -> Security:
     """
     Return Dask distributed security for connecting to the given dask cluster's scheduler
     over a public endpoint.

@@ -18,7 +18,7 @@ from distributed.security import Security
 from tornado.ioloop import PeriodicCallback
 
 from .backoff import ExpBackoff
-from .external import security, ExternalConnection  # noqa  # pylint: disable=unused-import
+from .external import _security, ExternalConnection  # noqa  # pylint: disable=unused-import
 from .plugins import SaturnSetup
 from .settings import Settings
 
@@ -114,7 +114,7 @@ class SaturnCluster(SpecCluster):
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
         if self.settings.is_external:
-            self.security = security(self.settings, self.dask_cluster_id)
+            self.security = _security(self.settings, self.dask_cluster_id)
         else:
             self.security = Security()
 

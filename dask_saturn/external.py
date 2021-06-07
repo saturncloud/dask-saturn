@@ -24,7 +24,7 @@ class ExternalConnection:
     """
 
     def __init__(self, *args, **kwargs):
-        raise DeprecationWarning(
+        raise RuntimeError(
             "ExternalConnection is no longer supported. "
             "Instead, set the env vars: ``SATURN_TOKEN`` and ``SATURN_BASE_URL`` "
             "as indicated in the Saturn Cloud UI. If those env vars are set, an external "

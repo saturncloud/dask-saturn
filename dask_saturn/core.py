@@ -231,7 +231,7 @@ class SaturnCluster(SpecCluster):
                 raise ValueError("Cluster is not running.")
             raise ValueError(response.json()["message"])
         try:
-            from distributed.objects import SchedulerInfo
+            from distributed.objects import SchedulerInfo  # pylint: disable=import-outside-toplevel
 
             return SchedulerInfo(response.json())
         except ImportError:
@@ -427,6 +427,15 @@ class SaturnCluster(SpecCluster):
                 )
         if len(errors) > 0:
             raise ValueError(" ".join(errors))
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Create an instance of this class to represent an existing cluster by name."""
+        log.warning(
+            "Only one dask cluster can be associated with a particular resource, so "
+            f"user provided name: {name} will not be used."
+        )
+        return cls()
 
 
 def _options() -> Dict[str, Any]:

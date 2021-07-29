@@ -113,6 +113,7 @@ class SaturnCluster(SpecCluster):
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.autoclose = autoclose
+        self._adaptive = None
         if self.settings.is_external:
             self.security = _security(self.settings, self.dask_cluster_id)
         else:
@@ -229,6 +230,12 @@ class SaturnCluster(SpecCluster):
                     pc.stop()
                 raise ValueError("Cluster is not running.")
             raise ValueError(response.json()["message"])
+        try:
+            from distributed.objects import SchedulerInfo  # pylint: disable=import-outside-toplevel
+
+            return SchedulerInfo(response.json())
+        except ImportError:
+            pass
         return response.json()
 
     # pylint: disable=invalid-overridden-method
@@ -420,6 +427,15 @@ class SaturnCluster(SpecCluster):
                 )
         if len(errors) > 0:
             raise ValueError(" ".join(errors))
+
+    @classmethod
+    def from_name(cls, name: str):
+        """Create an instance of this class to represent an existing cluster by name."""
+        log.warning(
+            "Only one dask cluster can be associated with a particular resource, so "
+            f"user provided name: {name} will not be used."
+        )
+        return cls()
 
 
 def _options() -> Dict[str, Any]:

@@ -93,6 +93,10 @@ class SaturnCluster(SpecCluster):
 
         self.settings = Settings()
 
+        # if dask-cluster is related to a prefect, autoclose is always true.
+        if self.settings.is_prefect:
+            autoclose = True
+
         if cluster_url is None:
             self._start(
                 n_workers=n_workers,

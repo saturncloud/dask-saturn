@@ -48,6 +48,10 @@ class Settings:
         return os.environ.get("SATURN_IS_INTERNAL", "false").lower() == "false"
 
     @property
+    def is_prefect(self) -> bool:
+        return os.environ.get("SATURN_RESOURCE_TYPE", "SingleUserServer") == "PrefectCloudFlowRun"
+
+    @property
     def url(self):
         """Saturn url"""
         return self.SATURN_BASE_URL
@@ -55,7 +59,12 @@ class Settings:
     @property
     def headers(self):
         """Saturn auth headers"""
+        if not self.is_prefect or os.environ.get("SATURN_ID") is None:
+            extra = {}
+        else:
+            extra = {"X-Prefect-Cloud-Flow-Run-ID": os.environ.get("SATURN_ID")}
         return {
             "Authorization": f"token {self.SATURN_TOKEN}",
             "X-Dask-Saturn-Version": __version__,
+            **extra,
         }

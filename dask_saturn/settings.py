@@ -17,7 +17,7 @@ class Settings:
     SATURN_BASE_URL: str
     SATURN_VERSION: str
 
-    async def __init__(self):
+    def __init__(self):
         try:
             self.SATURN_BASE_URL = os.environ["SATURN_BASE_URL"]
         except KeyError as err:

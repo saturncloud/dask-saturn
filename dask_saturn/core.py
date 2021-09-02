@@ -276,19 +276,15 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,
-            "prefectcloudflowrun_id": str(self.settings.SATURN_VERSION),
         }
 
         if self.settings.SATURN_VERSION >= LooseVersion("2021.08.16"):
-            cluster_config["prefectcloudflowrun_id"]: os.environ.get(
+            cluster_config["prefectcloudflowrun_id"] = os.environ.get(
                 "PREFECT__CONTEXT__FLOW_RUN_ID"
             )
-        else:
-            cluster_config["prefectcloudflowrun_id"] = str(self.settings.SATURN_VERSION)
 
         # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
-
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}

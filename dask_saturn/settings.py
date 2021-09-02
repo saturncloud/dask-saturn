@@ -54,6 +54,7 @@ class Settings:
 
     @property
     def is_prefect(self) -> bool:
+        """Whether the resource that the cluster will attach to is a prefect flow (or flow run)"""
         return os.environ.get("SATURN_RESOURCE_TYPE", "SingleUserServer").startswith("Prefect")
 
     @property

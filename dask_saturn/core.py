@@ -284,6 +284,8 @@ class SaturnCluster(SpecCluster):
             cluster_config["prefectcloudflowrun_id"]: os.environ.get(
                 "PREFECT__CONTEXT__FLOW_RUN_ID"
             )
+        else:
+            cluster_config["prefectcloudflowrun_id"] = str(self.settings.SATURN_VERSION)
 
         expBackoff = ExpBackoff(wait_timeout=scheduler_service_wait_timeout)
         logged_warnings: Dict[str, bool] = {}

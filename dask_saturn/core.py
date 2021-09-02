@@ -96,12 +96,10 @@ class SaturnCluster(SpecCluster):
             shutdown_on_close = kwargs.pop("autoclose")
 
         self.settings = Settings()
-        self._instances.add(self)
 
         # if dask-cluster is related to a prefect, shutdown_on_close is always true.
         if self.settings.is_prefect:
             shutdown_on_close = True
-            self._instances.add(self)
 
         if cluster_url is None:
             self._start(
@@ -118,12 +116,15 @@ class SaturnCluster(SpecCluster):
             self.dask_cluster_id = self.cluster_url.rstrip("/").split("/")[-1]
 
         info = self._get_info()
+        self._name = self.dask_cluster_id
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
         self.shutdown_on_close = shutdown_on_close
         self._adaptive = None
+        self._instances.add(self)
+
         if self.settings.is_external:
             self.security = _security(self.settings, self.dask_cluster_id)
         else:

@@ -7,6 +7,7 @@ for details on the parent class.
 import os
 import json
 import logging
+import weakref
 
 from distutils.version import LooseVersion
 from typing import Any, Dict, List, Optional
@@ -68,6 +69,7 @@ class SaturnCluster(SpecCluster):
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
 
     _sizes = None
+    _instances = weakref.WeakSet()
 
     def __init__(
         self,
@@ -94,6 +96,7 @@ class SaturnCluster(SpecCluster):
             shutdown_on_close = kwargs.pop("autoclose")
 
         self.settings = Settings()
+        self._instances.add(self)
 
         # if dask-cluster is related to a prefect, shutdown_on_close is always true.
         if self.settings.is_prefect:

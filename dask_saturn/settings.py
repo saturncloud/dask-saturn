@@ -8,7 +8,7 @@ from distutils.version import LooseVersion
 from urllib.parse import urlparse
 from ._version import get_versions
 
-__version__ = "0.4.2"  # get_versions()["version"]
+__version__ = get_versions()["version"]
 
 
 class Settings:

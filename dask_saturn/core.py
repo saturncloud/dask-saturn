@@ -276,6 +276,7 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,
+            "prefectcloudflowrun_id": os.environ.get("PREFECT__CONTEXT__FLOW_RUN_ID"),
         }
         # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}

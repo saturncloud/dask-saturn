@@ -15,8 +15,9 @@ class Settings:
 
     SATURN_TOKEN: str
     SATURN_BASE_URL: str
+    SATURN_VERSION: str
 
-    def __init__(self):
+    async def __init__(self):
         try:
             self.SATURN_BASE_URL = os.environ["SATURN_BASE_URL"]
         except KeyError as err:
@@ -41,6 +42,9 @@ class Settings:
         except KeyError as err:
             err_msg = "Missing required environment variable SATURN_TOKEN."
             raise RuntimeError(err_msg) from err
+
+        # get the SATURN_VERSION if included, default to the one before field was added.
+        self.SATURN_VERSION = os.environ.get("SATURN_VERSION", "v2021.07.19-12")
 
     @property
     def is_external(self) -> bool:

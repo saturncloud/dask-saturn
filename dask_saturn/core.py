@@ -5,6 +5,7 @@ See https://distributed.dask.org/en/latest/_modules/distributed/deploy/spec.html
 for details on the parent class.
 """
 
+import os
 import json
 import logging
 
@@ -274,6 +275,7 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,
+            "resource_id": os.environ.get("SATURN_ID"),
         }
         # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}

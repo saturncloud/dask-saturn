@@ -9,7 +9,6 @@ import os
 import json
 import logging
 
-from distutils.version import LooseVersion
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -280,7 +279,7 @@ class SaturnCluster(SpecCluster):
         # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
-        if self.settings.SATURN_VERSION >= LooseVersion("v2021.08.16"):
+        if self.settings.SATURN_VERSION >= "v2021.08.16":
             cluster_config["prefectcloudflowrun_id"]: os.environ.get(
                 "PREFECT__CONTEXT__FLOW_RUN_ID"
             )

@@ -276,7 +276,7 @@ class SaturnCluster(SpecCluster):
             "scheduler_size": scheduler_size,
             "nprocs": nprocs,
             "nthreads": nthreads,
-            "prefectcloudflowrun_id": self.settings.SATURN_VERSION,
+            "prefectcloudflowrun_id": str(self.settings.SATURN_VERSION),
         }
 
         if self.settings.SATURN_VERSION >= LooseVersion("2021.08.16"):

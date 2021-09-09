@@ -4,10 +4,13 @@ Saturn-specific override of ``dask.distributed.deploy.SpecCluster``
 See https://distributed.dask.org/en/latest/_modules/distributed/deploy/spec.html
 for details on the parent class.
 """
-
+import os
 import json
 import logging
+import warnings
+import weakref
 
+from distutils.version import LooseVersion
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -59,15 +62,19 @@ class SaturnCluster(SpecCluster):
         minutes). Setting it to a lower value will help you catch problems earlier,
         but may also lead to false positives if you don't give the cluster
         enough to time to start up.
-    :param autoclose: Whether or not the cluster should be automatically destroyed
-        when its ``__exit__()`` method is called. By default, this is ``False``. Set
-        this parameter to ``True`` if you want to use it in a context manager which
-        closes the cluster when it exits.
+    :param shutdown_on_close: Whether or not the cluster should be automatically destroyed
+        when its calling process is destroyed. Set this parameter to ``True`` if you want
+        your cluster to shutdown when the work is done.
+        By default, this is ``False`` if the cluster is attached to a Jupyter server,
+        deployment, or job. If the cluster is attached to a Prefect Cloud flow run, this option
+        is always set to ``True``.
+        Note: ``autoclose`` is accepted as an alias for now, but will be removed in the future.
     """
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
 
     _sizes = None
+    _instances = weakref.WeakSet()
 
     def __init__(
         self,
@@ -80,7 +87,7 @@ class SaturnCluster(SpecCluster):
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
-        autoclose: bool = False,
+        shutdown_on_close: bool = False,
         **kwargs,
     ):
         if "external_connection" in kwargs:
@@ -90,8 +97,19 @@ class SaturnCluster(SpecCluster):
                 "as indicated in the Saturn Cloud UI. If those env vars are set, an external "
                 "connection will be automatically set up."
             )
+        if "autoclose" in kwargs:
+            warnings.warn(
+                "``autoclose`` has been deprecated and will be removed in a future version. "
+                "Please use ``shutdown_on_close`` instead.",
+                category=FutureWarning,
+            )
+            shutdown_on_close = kwargs.pop("autoclose")
 
         self.settings = Settings()
+
+        if self.settings.is_prefect:
+            # defaults to True if related to prefect, else defaults to False
+            shutdown_on_close = True
 
         if cluster_url is None:
             self._start(
@@ -108,12 +126,15 @@ class SaturnCluster(SpecCluster):
             self.dask_cluster_id = self.cluster_url.rstrip("/").split("/")[-1]
 
         info = self._get_info()
+        self._name = self.dask_cluster_id
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
         self.loop = None
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}
-        self.autoclose = autoclose
+        self.shutdown_on_close = shutdown_on_close
         self._adaptive = None
+        self._instances.add(self)
+
         if self.settings.is_external:
             self.security = _security(self.settings, self.dask_cluster_id)
         else:
@@ -271,6 +292,12 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+
+        if self.settings.SATURN_VERSION >= LooseVersion("2021.08.16"):
+            cluster_config["prefectcloudflowrun_id"] = os.environ.get(
+                "PREFECT__CONTEXT__FLOW_RUN_ID"
+            )
+
         # only send kwargs that are explicitly set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
@@ -285,12 +312,10 @@ class SaturnCluster(SpecCluster):
             if not response.ok:
                 raise ValueError(response.json()["message"])
             data = response.json()
-            warnings = data.get("warnings")
-            if warnings is not None:
-                for warning in warnings:
-                    if not logged_warnings.get(warning):
-                        logged_warnings[warning] = True
-                        log.warning(warning)
+            for warning in data.get("warnings", []):
+                if not logged_warnings.get(warning):
+                    logged_warnings[warning] = True
+                    log.warning(warning)
             if data["status"] == "error":
                 raise ValueError(" ".join(data["errors"]))
             elif data["status"] == "ready":
@@ -400,7 +425,7 @@ class SaturnCluster(SpecCluster):
 
             with SaturnCluster() as cluster:
         """
-        if self.autoclose:
+        if self.shutdown_on_close:
             self.close()
 
     # pylint: disable=access-member-before-definition

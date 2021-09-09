@@ -4,6 +4,7 @@ Settings used for interacting with Saturn
 
 import os
 
+from distutils.version import LooseVersion
 from urllib.parse import urlparse
 from ._version import get_versions
 
@@ -15,6 +16,7 @@ class Settings:
 
     SATURN_TOKEN: str
     SATURN_BASE_URL: str
+    SATURN_VERSION: LooseVersion
 
     def __init__(self):
         try:
@@ -42,10 +44,18 @@ class Settings:
             err_msg = "Missing required environment variable SATURN_TOKEN."
             raise RuntimeError(err_msg) from err
 
+        # get the SATURN_VERSION if included, default to the one before field was added.
+        self.SATURN_VERSION = LooseVersion(os.environ.get("SATURN_VERSION", "2021.07.19"))
+
     @property
     def is_external(self) -> bool:
         """Whether the client environment is external to Saturn"""
         return os.environ.get("SATURN_IS_INTERNAL", "false").lower() == "false"
+
+    @property
+    def is_prefect(self) -> bool:
+        """Whether the resource that the cluster will attach to is a prefect flow (or flow run)"""
+        return os.environ.get("SATURN_RESOURCE_TYPE", "SingleUserServer").startswith("Prefect")
 
     @property
     def url(self):

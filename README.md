@@ -26,7 +26,7 @@ option. Similarly, you can set the `scheduler_size`, `worker_size`, and `worker_
 > Note: If the cluster is already running then you can't change the settings.
 > Attempting to do so will raise a warning.
 
-Use the `autoclose` option to set up a cluster that is tied to the client
+Use the `shudown_on_close` option to set up a cluster that is tied to the client
 kernel. This functions like a regular dask `LocalCluster`, when your jupyter
 kernel dies or is restarted, the dask cluster will close.
 

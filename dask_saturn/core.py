@@ -66,8 +66,9 @@ class SaturnCluster(SpecCluster):
         when its calling process is destroyed. Set this parameter to ``True`` if you want
         your cluster to shutdown when the work is done.
         By default, this is ``False`` if the cluster is attached to a Jupyter server,
-        deployment, or job and ``True`` if the cluster is attached to a Prefect Cloud flow run.
-        ``autoclose`` is accepted as an alias for now, but will be removed in the future.
+        deployment, or job. If the cluster is attached to a Prefect Cloud flow run, this option
+        is always set to ``True``.
+        Note: ``autoclose`` is accepted as an alias for now, but will be removed in the future.
     """
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
@@ -86,7 +87,7 @@ class SaturnCluster(SpecCluster):
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
-        shutdown_on_close: Optional[bool] = None,
+        shutdown_on_close: bool = False,
         **kwargs,
     ):
         if "external_connection" in kwargs:
@@ -106,9 +107,9 @@ class SaturnCluster(SpecCluster):
 
         self.settings = Settings()
 
-        if shutdown_on_close is None:
+        if self.settings.is_prefect:
             # defaults to True if related to prefect, else defaults to False
-            shutdown_on_close = self.settings.is_prefect
+            shutdown_on_close = True
 
         if cluster_url is None:
             self._start(

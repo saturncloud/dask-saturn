@@ -7,6 +7,7 @@ for details on the parent class.
 import os
 import json
 import logging
+import warnings
 import weakref
 
 from distutils.version import LooseVersion
@@ -62,8 +63,11 @@ class SaturnCluster(SpecCluster):
         but may also lead to false positives if you don't give the cluster
         enough to time to start up.
     :param shutdown_on_close: Whether or not the cluster should be automatically destroyed
-        when its calling process is destroyed. By default, this is ``False``. Set
-        this parameter to ``True`` if you want your cluster to shutdown when the work is done.
+        when its calling process is destroyed. Set this parameter to ``True`` if you want
+        your cluster to shutdown when the work is done.
+        By default, this is ``False`` if the cluster is attached to a Jupyter server,
+        deployment, or job and ``True`` if the cluster is attached to a Prefect Cloud flow run.
+        ``autoclose`` is accepted as an alias for now, but will be removed in the future.
     """
 
     # pylint: disable=unused-argument,super-init-not-called,too-many-instance-attributes
@@ -82,7 +86,7 @@ class SaturnCluster(SpecCluster):
         nprocs: Optional[int] = None,
         nthreads: Optional[int] = None,
         scheduler_service_wait_timeout: int = DEFAULT_WAIT_TIMEOUT_SECONDS,
-        shutdown_on_close: bool = False,
+        shutdown_on_close: Optional[bool] = None,
         **kwargs,
     ):
         if "external_connection" in kwargs:
@@ -93,13 +97,18 @@ class SaturnCluster(SpecCluster):
                 "connection will be automatically set up."
             )
         if "autoclose" in kwargs:
+            warnings.warn(
+                "``autoclose`` has been deprecated and will be removed in a future version. "
+                "Please use ``shutdown_on_close`` instead.",
+                category=FutureWarning,
+            )
             shutdown_on_close = kwargs.pop("autoclose")
 
         self.settings = Settings()
 
-        # if dask-cluster is related to a prefect, shutdown_on_close is always true.
-        if self.settings.is_prefect:
-            shutdown_on_close = True
+        if shutdown_on_close is None:
+            # defaults to True if related to prefect, else defaults to False
+            shutdown_on_close = self.settings.is_prefect
 
         if cluster_url is None:
             self._start(

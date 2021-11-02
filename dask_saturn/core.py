@@ -9,6 +9,7 @@ import json
 import logging
 import warnings
 import weakref
+import uuid
 
 from distutils.version import LooseVersion
 from typing import Any, Dict, List, Optional
@@ -173,6 +174,7 @@ class SaturnCluster(SpecCluster):
         ``help(SaturnCluster)``.
         """
         log.info("Resetting cluster.")
+
         settings = Settings()
         url = urljoin(settings.url, "api/dask_clusters/reset")
         cluster_config = {
@@ -183,6 +185,7 @@ class SaturnCluster(SpecCluster):
             "nprocs": nprocs,
             "nthreads": nthreads,
         }
+
         # only send kwargs that are explicity set by user
         cluster_config = {k: v for k, v in cluster_config.items() if v is not None}
 
@@ -258,6 +261,13 @@ class SaturnCluster(SpecCluster):
         except ImportError:
             pass
         return response.json()
+
+    @property
+    def name(self) -> str:
+        """
+        Name of the dask cluster
+        """
+        return self._name
 
     # pylint: disable=invalid-overridden-method
     def _start(

@@ -489,4 +489,3 @@ def list_sizes() -> List[str]:
 def describe_sizes() -> Dict[str, str]:
     """Return a dict of size options with a description."""
     return {size["name"]: size["display"] for size in _options()["size"]}
-    

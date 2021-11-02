@@ -9,7 +9,6 @@ import json
 import logging
 import warnings
 import weakref
-import uuid
 
 from distutils.version import LooseVersion
 from typing import Any, Dict, List, Optional

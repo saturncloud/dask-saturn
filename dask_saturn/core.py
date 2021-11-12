@@ -353,9 +353,7 @@ class SaturnCluster(SpecCluster):
             log.info("Success!")
         elif "repeat" in output_statuses:
             log.info("Success!")
-        elif len(output_statuses) == 0:
-            log.warning("No workers started up.")
-        else:
+        elif len(output_statuses) > 0:
             log.warning("Registering default plugins failed. Please check logs for more info.")
 
     def _get_info(self) -> Dict[str, Any]:

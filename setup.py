@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 import versioneer
 
-install_requires = ["distributed", "requests", "cryptography"]
+install_requires = ["distributed", "packaging", "requests", "cryptography"]
 
 
 setup(

@@ -10,7 +10,7 @@ import logging
 import warnings
 import weakref
 
-from distutils.version import LooseVersion
+from packaging.version import parse as parse_version
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -302,7 +302,7 @@ class SaturnCluster(SpecCluster):
             "nthreads": nthreads,
         }
 
-        if self.settings.SATURN_VERSION >= LooseVersion("2021.08.16"):
+        if self.settings.SATURN_VERSION >= parse_version("2021.08.16"):
             cluster_config["prefectcloudflowrun_id"] = os.environ.get(
                 "PREFECT__CONTEXT__FLOW_RUN_ID"
             )

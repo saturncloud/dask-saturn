@@ -4,7 +4,7 @@ Settings used for interacting with Saturn
 
 import os
 
-from distutils.version import LooseVersion
+from packaging.version import Version, parse as parse_version
 from urllib.parse import urlparse
 from ._version import get_versions
 
@@ -16,7 +16,7 @@ class Settings:
 
     SATURN_TOKEN: str
     SATURN_BASE_URL: str
-    SATURN_VERSION: LooseVersion
+    SATURN_VERSION: Version
 
     def __init__(self):
         try:
@@ -45,7 +45,7 @@ class Settings:
             raise RuntimeError(err_msg) from err
 
         # get the SATURN_VERSION if included, default to the one before field was added.
-        self.SATURN_VERSION = LooseVersion(os.environ.get("SATURN_VERSION", "2021.07.19"))
+        self.SATURN_VERSION = parse_version(os.environ.get("SATURN_VERSION", "2021.07.19"))
 
     @property
     def is_external(self) -> bool:

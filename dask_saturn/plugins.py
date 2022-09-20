@@ -19,7 +19,6 @@ class SaturnSetup:
 
     name = "saturn_setup"
 
-    # pylint: disable=no-self-use
     def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
         worker.scheduler.addr = resolve_address(worker.scheduler.addr)
@@ -110,7 +109,7 @@ class RegisterFiles:
 
     name = "register_files"
 
-    # pylint: disable=no-self-use,unused-argument
+    # pylint: disable=unused-argument
     async def setup(self, worker=None):
         """This method gets called at worker setup for new and existing workers"""
         await register_files_to_worker()

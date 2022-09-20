@@ -57,7 +57,7 @@ class ExpBackoff:
 
         # Generate exp backoff with jitter
         self.retries += 1
-        backoff = min(self.max_sleep, self.min_sleep * 2 ** self.retries) / 2
+        backoff = min(self.max_sleep, self.min_sleep * 2**self.retries) / 2
         jitter = randrange(0, ceil(backoff))
         wait_time = backoff + jitter
 

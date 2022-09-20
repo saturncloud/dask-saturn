@@ -131,7 +131,7 @@ class SaturnCluster(SpecCluster):
         self._dashboard_link = info["dashboard_link"]
         self._scheduler_address = info["scheduler_address"]
 
-        if parse_version(distributed.__version__) < parse_version('2022.8'):
+        if parse_version(distributed.__version__) < parse_version("2022.8"):
             self.loop = None
 
         self.periodic_callbacks: Dict[str, PeriodicCallback] = {}

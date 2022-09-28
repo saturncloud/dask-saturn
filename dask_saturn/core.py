@@ -473,6 +473,9 @@ class SaturnCluster(SpecCluster):
         )
         return cls()
 
+    def _widget(self):
+        return None
+
 
 def _options() -> Dict[str, Any]:
     settings = Settings()

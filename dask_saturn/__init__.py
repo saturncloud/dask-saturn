@@ -9,3 +9,6 @@ from .external import ExternalConnection  # noqa: F401
 
 __version__ = get_versions()["version"]
 del get_versions
+
+from . import _version
+__version__ = _version.get_versions()['version']
